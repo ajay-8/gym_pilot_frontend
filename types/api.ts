@@ -133,7 +133,7 @@ export interface MemberListItem {
   participant_id: string;
   first_name?: string;
   last_name?: string;
-  email: string;
+  email?: string;
   phone?: string;
   membership_status: StatusType;
   membership_start_date: string;
@@ -149,16 +149,52 @@ export interface MemberListResponse {
 }
 
 export interface MemberOnboardRequest {
-  email: string;
-  phone?: string;
+  phone: string;
+  email?: string;
+  first_name: string;
+  last_name?: string;
+  date_of_birth?: string;
+  gender?: Gender;
+  membership_start_date?: string;
+  plan_id?: string;
+  roles?: ParticipantRole[];
+}
+
+export interface MemberOnboardResponse {
+  user_id: string;
+  participant_id: string;
+  membership_id?: string;
+  status: StatusType;
+  roles: ParticipantRole[];
+}
+
+export interface MembershipSummary {
+  id: string;
+  plan_id?: string;
+  status: StatusType;
+  start_date: string;
+  end_date?: string;
+}
+
+export interface MemberDetailResponse {
+  user_id: string;
+  participant_id: string;
   first_name?: string;
   last_name?: string;
-  gender?: Gender;
-  roles?: ParticipantRole[];
-  membership_plan_id?: string;
-  membership_start_date?: string;
-  membership_end_date?: string;
-  amount_paid?: number;
+  email?: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+  status: StatusType;
+  joined_at: string;
+  roles: ParticipantRole[];
+  membership?: MembershipSummary;
+  total_check_ins: number;
+  total_payments: number;
+}
+
+export interface MemberStatusUpdateRequest {
+  status: StatusType;
 }
 
 // Membership Plan Types
