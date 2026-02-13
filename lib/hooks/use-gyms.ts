@@ -1,0 +1,48 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { gymsApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { GymOnboardRequest, PaginationParams } from "@/types/api";
+
+// Query key factory
+export const gymsKeys = {
+  all: ["gyms"] as const,
+  myGyms: (params?: PaginationParams) => [...gymsKeys.all, "my-gyms", params] as const,
+  current: () => [...gymsKeys.all, "current"] as const,
+};
+
+// Hook to get user's gyms
+export function useMyGyms(params?: PaginationParams) {
+  return useQuery({
+    queryKey: gymsKeys.myGyms(params),
+    queryFn: () => gymsApi.getMyGyms(params),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Hook for gym onboarding
+export function useGymOnboard() {
+  const router = useRouter();
+  const { setAuth, setGymContext } = useAuthStore();
+
+  return useMutation({
+    mutationFn: gymsApi.onboard,
+    onSuccess: async (data) => {
+      // After onboarding, automatically log in the user
+      // Store the owner info and redirect to login
+      router.push(`/login?email=${encodeURIComponent(data.owner.email)}`);
+    },
+  });
+}
+
+// Hook to get current gym info
+export function useCurrentGym() {
+  const { gymContext } = useAuthStore();
+
+  return useQuery({
+    queryKey: gymsKeys.current(),
+    queryFn: gymsApi.getCurrentGymPublicInfo,
+    enabled: !!gymContext,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
