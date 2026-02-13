@@ -4,6 +4,11 @@ import { APIError } from "@/types/api";
 // API Base URL from environment
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Generate a unique idempotency key
+function generateIdempotencyKey(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+}
+
 // Create Axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -14,7 +19,7 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true, // Important for refresh token cookies
 });
 
-// Request interceptor - Add access token to requests
+// Request interceptor - Add access token and idempotency key to requests
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Get access token from localStorage
@@ -22,6 +27,13 @@ apiClient.interceptors.request.use(
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Add idempotency key for mutation requests (POST, PUT, PATCH)
+    if (config.method && ["post", "put", "patch"].includes(config.method.toLowerCase())) {
+      if (config.headers && !config.headers["Idempotency-Key"]) {
+        config.headers["Idempotency-Key"] = generateIdempotencyKey();
+      }
     }
 
     return config;
