@@ -208,7 +208,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
               <FormField
                 control={form.control}
                 name="date_of_birth"
-                render=({field }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date of Birth</FormLabel>
                     <FormControl>
