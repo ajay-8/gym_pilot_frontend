@@ -33,7 +33,7 @@ export function useCurrentUser() {
 // Hook for login
 export function useLogin() {
   const router = useRouter();
-  const { setAuth, setGymContext } = useAuthStore();
+  const { setAuth, setGymContext, updateAccessToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -47,6 +47,9 @@ export function useLogin() {
       setAuth(userInfo.user, data.access_token);
 
       if (userInfo.gym_context) {
+        // User has a previous gym context, need to get new token with gym_id
+        const sessionData = await authApi.setSessionGym({ gym_id: userInfo.gym_context.gym_id });
+        updateAccessToken(sessionData.access_token);
         setGymContext(userInfo.gym_context);
         router.push("/dashboard");
       } else {
