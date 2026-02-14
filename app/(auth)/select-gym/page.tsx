@@ -1,26 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMyGyms } from "@/lib/hooks/use-gyms";
 import { useSetGymSession, useAuth } from "@/lib/hooks/use-auth";
-import { useRouter } from "next/navigation";
 
 export default function SelectGymPage() {
-  const router = useRouter();
-  const { user, hasGymContext } = useAuth();
+  const { user, gymContext } = useAuth();
   const { data: gymsData, isLoading, isError } = useMyGyms({ page: 1, page_size: 50 });
   const setGymSession = useSetGymSession();
-
-  // If user already has gym context, redirect to dashboard
-  useEffect(() => {
-    if (hasGymContext) {
-      router.push("/dashboard");
-    }
-  }, [hasGymContext, router]);
 
   const handleSelectGym = async (gymId: string) => {
     try {
@@ -80,9 +70,13 @@ export default function SelectGymPage() {
             </div>
             <span className="text-2xl font-bold">Gym Pilot</span>
           </div>
-          <h1 className="text-3xl font-bold mt-4">Select Your Gym</h1>
+          <h1 className="text-3xl font-bold mt-4">
+            {gymContext ? "Switch Gym" : "Select Your Gym"}
+          </h1>
           <p className="text-muted-foreground mt-2">
-            Choose which gym you want to manage
+            {gymContext
+              ? `Currently managing: ${gymContext.gym_name}`
+              : "Choose which gym you want to manage"}
           </p>
         </div>
 

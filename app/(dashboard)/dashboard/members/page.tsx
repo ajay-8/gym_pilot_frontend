@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMembers } from "@/lib/hooks/use-members";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function MembersPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -147,7 +149,11 @@ export default function MembersPage() {
                           : "N/A"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/members/${member.user_id}`)}
+                        >
                           View
                         </Button>
                       </TableCell>

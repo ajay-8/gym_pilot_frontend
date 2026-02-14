@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGymOnboard } from "@/lib/hooks/use-gyms";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 // Form validation schema
 const formSchema = z.object({
@@ -45,8 +47,19 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [error, setError] = useState<string>("");
   const gymOnboard = useGymOnboard();
+  const { isAuthenticated, hasGymContext, hasHydrated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!hasHydrated) return;
+
+    if (isAuthenticated) {
+      router.push(hasGymContext ? "/dashboard" : "/select-gym");
+    }
+  }, [isAuthenticated, hasGymContext, hasHydrated, router]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -93,6 +106,15 @@ export default function RegisterPage() {
       setError(err?.detail || "Failed to register. Please try again.");
     }
   };
+
+  // Show loading while checking auth
+  if (!hasHydrated || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">

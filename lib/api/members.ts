@@ -5,6 +5,8 @@ import {
   MemberOnboardResponse,
   MemberDetailResponse,
   MemberStatusUpdateRequest,
+  MemberHealthRecordsResponse,
+  MemberHealthRecordsUpdateRequest,
   PaginationParams,
 } from "@/types/api";
 
@@ -41,6 +43,28 @@ export const membersApi = {
    */
   updateStatus: async (userId: string, payload: MemberStatusUpdateRequest): Promise<MemberDetailResponse> => {
     const { data } = await apiClient.patch<MemberDetailResponse>(`/members/${userId}/status`, payload);
+    return data;
+  },
+
+  /**
+   * Get member health records
+   */
+  getHealthRecords: async (userId: string): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.get<MemberHealthRecordsResponse>(`/members/${userId}/health-records`);
+    return data;
+  },
+
+  /**
+   * Update member health records
+   */
+  updateHealthRecords: async (
+    userId: string,
+    payload: MemberHealthRecordsUpdateRequest
+  ): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.put<MemberHealthRecordsResponse>(
+      `/members/${userId}/health-records`,
+      payload
+    );
     return data;
   },
 };

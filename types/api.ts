@@ -197,6 +197,32 @@ export interface MemberStatusUpdateRequest {
   status: StatusType;
 }
 
+export interface EmergencyContact {
+  name?: string;
+  relationship?: string;
+  phone?: string;
+}
+
+export interface MedicalCondition {
+  condition?: string;
+  severity?: string;
+  notes?: string;
+}
+
+export interface MemberHealthRecordsResponse {
+  medical_conditions?: MedicalCondition[];
+  emergency_contact?: EmergencyContact;
+  fitness_goals?: string[];
+  injuries_limitations?: string;
+}
+
+export interface MemberHealthRecordsUpdateRequest {
+  medical_conditions?: MedicalCondition[];
+  emergency_contact?: EmergencyContact;
+  fitness_goals?: string[];
+  injuries_limitations?: string;
+}
+
 // Membership Plan Types
 export interface MembershipPlanResponse {
   id: string;
@@ -208,6 +234,16 @@ export interface MembershipPlanResponse {
   status: StatusType;
   created_at: string;
   updated_at: string;
+}
+
+// Reports Types
+export interface DashboardResponse {
+  active_members_count: number;
+  check_ins_today: number;
+  checked_in_now: number;
+  expiring_memberships_7d: number;
+  new_members_this_month: number;
+  revenue_this_month: number;
 }
 
 // API Error Types

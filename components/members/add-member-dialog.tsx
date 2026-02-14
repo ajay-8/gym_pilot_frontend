@@ -30,22 +30,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMemberOnboard } from "@/lib/hooks/use-members";
-import { Gender } from "@/types/api";
+import { Gender, ParticipantRole } from "@/types/api";
 
-const formSchema = z.object({
-  first_name: z.string().min(1, "First name is required").max(100),
-  last_name: z.string().max(100).optional(),
-  phone: z
-    .string()
-    .min(10, "Phone number must be at least 10 digits")
-    .max(15)
-    .regex(/^(\+91[-\s]?)?[6-9]\d{9}$/, "Invalid Indian phone number"),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
-  date_of_birth: z.string().optional(),
-  membership_start_date: z.string().min(1, "Start date is required"),
-});
+const formSchema = z
+  .object({
+    first_name: z.string().min(1, "First name is required").max(100),
+    last_name: z.string().max(100).optional(),
+    phone: z
+      .string()
+      .min(10, "Phone number must be at least 10 digits")
+      .max(15)
+      .regex(/^(\+91[-\s]?)?[6-9]\d{9}$/, "Invalid Indian phone number"),
+    email: z.string().email("Invalid email address").optional().or(z.literal("")),
+    gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
+    date_of_birth: z.string().optional(),
+    roles: z
+      .array(z.enum(["member", "trainer", "staff", "admin", "owner"]))
+      .min(1, "At least one role is required"),
+    membership_start_date: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If "member" role is selected, membership_start_date is required
+      if (data.roles.includes("member")) {
+        return data.membership_start_date && data.membership_start_date.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Membership start date is required when Member role is selected",
+      path: ["membership_start_date"],
+    }
+  );
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -67,6 +85,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
       email: "",
       gender: undefined,
       date_of_birth: "",
+      roles: ["member"],
       membership_start_date: new Date().toISOString().split("T")[0],
     },
   });
@@ -82,8 +101,8 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
         email: data.email || undefined,
         gender: data.gender as Gender | undefined,
         date_of_birth: data.date_of_birth || undefined,
-        membership_start_date: data.membership_start_date,
-        roles: ["member"],
+        membership_start_date: data.membership_start_date || undefined,
+        roles: data.roles as ParticipantRole[],
       });
 
       form.reset();
@@ -222,13 +241,81 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
 
             <FormField
               control={form.control}
+              name="roles"
+              render={() => (
+                <FormItem>
+                  <div className="mb-4">
+                    <FormLabel className="text-base">Roles *</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Select at least one role for this participant
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: "member", label: "Member" },
+                      { value: "trainer", label: "Trainer" },
+                      { value: "staff", label: "Staff" },
+                      { value: "admin", label: "Admin" },
+                    ].map((role) => (
+                      <FormField
+                        key={role.value}
+                        control={form.control}
+                        name="roles"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={role.value}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(role.value as ParticipantRole)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...field.value, role.value])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value: string) => value !== role.value
+                                          )
+                                        );
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal cursor-pointer">
+                                {role.label}
+                              </FormLabel>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="membership_start_date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Membership Start Date *</FormLabel>
+                  <FormLabel>
+                    Membership Start Date
+                    {form.watch("roles")?.includes("member") && " *"}
+                  </FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input
+                      type="date"
+                      {...field}
+                      disabled={!form.watch("roles")?.includes("member")}
+                    />
                   </FormControl>
+                  {form.watch("roles")?.includes("member") && (
+                    <p className="text-sm text-muted-foreground">
+                      Required when Member role is selected
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

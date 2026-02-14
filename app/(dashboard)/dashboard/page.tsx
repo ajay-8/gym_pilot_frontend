@@ -4,11 +4,13 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, CreditCard, Calendar, TrendingUp } from "lucide-react";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useDashboard } from "@/lib/hooks/use-reports";
 import { AddMemberDialog } from "@/components/members/add-member-dialog";
 
 export default function DashboardPage() {
   const { user, gymContext } = useAuth();
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
+  const { data: dashboard, isLoading: isDashboardLoading } = useDashboard();
 
   return (
     <div className="space-y-6">
@@ -30,36 +32,56 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              No members yet
-            </p>
+            {isDashboardLoading ? (
+              <div className="text-2xl font-bold">...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{dashboard?.active_members_count || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  {dashboard?.active_members_count === 0
+                    ? "No members yet"
+                    : `${dashboard?.new_members_this_month || 0} new this month`}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Memberships</CardTitle>
+            <CardTitle className="text-sm font-medium">Check-ins Today</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              No active memberships
-            </p>
+            {isDashboardLoading ? (
+              <div className="text-2xl font-bold">...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{dashboard?.check_ins_today || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  {dashboard?.checked_in_now || 0} currently in gym
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Classes Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground">
-              No classes scheduled
-            </p>
+            {isDashboardLoading ? (
+              <div className="text-2xl font-bold">...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{dashboard?.expiring_memberships_7d || 0}</div>
+                <p className="text-xs text-muted-foreground">
+                  Memberships expiring in 7 days
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -69,10 +91,20 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹0</div>
-            <p className="text-xs text-muted-foreground">
-              No revenue yet
-            </p>
+            {isDashboardLoading ? (
+              <div className="text-2xl font-bold">...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  ₹{dashboard?.revenue_this_month?.toLocaleString("en-IN") || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {dashboard?.revenue_this_month === 0
+                    ? "No revenue yet"
+                    : "Revenue this month"}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
