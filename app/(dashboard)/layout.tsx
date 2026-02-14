@@ -12,8 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth, useLogout } from "@/lib/hooks/use-auth";
-import { useEffect } from "react";
+import { useAuth, useLogout, useSetGymSession } from "@/lib/hooks/use-auth";
+import { useEffect, useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home, roles: ["owner", "admin", "staff", "trainer", "member"] },
@@ -34,6 +34,8 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, gymContext, isAuthenticated, hasHydrated } = useAuth();
   const logout = useLogout();
+  const setGymSession = useSetGymSession();
+  const [tokenRefreshed, setTokenRefreshed] = useState(false);
 
   // Redirect to login if not authenticated (only after hydration)
   useEffect(() => {
@@ -48,6 +50,23 @@ export default function DashboardLayout({
       router.push("/select-gym");
     }
   }, [hasHydrated, isAuthenticated, gymContext, router]);
+
+  // Auto-refresh token if gym context exists but token doesn't have gym_id
+  useEffect(() => {
+    const refreshToken = async () => {
+      if (hasHydrated && isAuthenticated && gymContext && !tokenRefreshed) {
+        try {
+          // Call setSessionGym to get a fresh token with gym_id
+          await setGymSession.mutateAsync({ gym_id: gymContext.gym_id });
+          setTokenRefreshed(true);
+        } catch (error) {
+          console.error("Failed to refresh token:", error);
+        }
+      }
+    };
+
+    refreshToken();
+  }, [hasHydrated, isAuthenticated, gymContext, tokenRefreshed, setGymSession]);
 
   if (!hasHydrated || !isAuthenticated || !gymContext) {
     return (
