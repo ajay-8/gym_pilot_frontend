@@ -32,24 +32,24 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, gymContext, isAuthenticated } = useAuth();
+  const { user, gymContext, isAuthenticated, hasHydrated } = useAuth();
   const logout = useLogout();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (only after hydration)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  // Redirect to gym selection if no gym context
+  // Redirect to gym selection if no gym context (only after hydration)
   useEffect(() => {
-    if (isAuthenticated && !gymContext) {
+    if (hasHydrated && isAuthenticated && !gymContext) {
       router.push("/select-gym");
     }
-  }, [isAuthenticated, gymContext, router]);
+  }, [hasHydrated, isAuthenticated, gymContext, router]);
 
-  if (!isAuthenticated || !gymContext) {
+  if (!hasHydrated || !isAuthenticated || !gymContext) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -113,47 +113,6 @@ export default function DashboardLayout({
             );
           })}
         </nav>
-
-        {/* User Menu */}
-        <div className="border-t p-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-2">
-                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user?.first_name?.[0] || user?.email?.[0].toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {user?.first_name || "User"}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user?.email}
-                  </p>
-                </div>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile">Profile Settings</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/select-gym">Switch Gym</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleLogout}
-                className="text-destructive focus:text-destructive"
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -163,6 +122,48 @@ export default function DashboardLayout({
           <h1 className="text-2xl font-bold">
             {navigation.find((item) => item.href === pathname)?.name || "Dashboard"}
           </h1>
+
+          {/* User Menu - Desktop */}
+          <div className="hidden md:block">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {user?.first_name?.[0] || user?.email?.[0].toUpperCase()}
+                    </span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">
+                      {user?.first_name || "User"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">Profile Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/select-gym">Switch Gym</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">

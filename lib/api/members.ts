@@ -1,36 +1,70 @@
 import apiClient from "./client";
 import {
-  MemberOnboardRequest,
   MemberListResponse,
+  MemberOnboardRequest,
+  MemberOnboardResponse,
+  MemberDetailResponse,
+  MemberStatusUpdateRequest,
+  MemberHealthRecordsResponse,
+  MemberHealthRecordsUpdateRequest,
   PaginationParams,
 } from "@/types/api";
 
 export const membersApi = {
-  // Onboard a new member
-  onboard: async (payload: MemberOnboardRequest): Promise<{ user_id: string }> => {
-    const { data } = await apiClient.post("/members/onboard", payload);
-    return data;
-  },
-
-  // List members
-  listMembers: async (params?: PaginationParams): Promise<MemberListResponse> => {
+  /**
+   * List all members of the current gym
+   */
+  list: async (params: PaginationParams = {}): Promise<MemberListResponse> => {
+    const { page = 1, page_size = 20 } = params;
     const { data } = await apiClient.get<MemberListResponse>("/members/my-members", {
-      params,
+      params: { page, page_size },
     });
     return data;
   },
 
-  // Get member details
-  getMemberDetails: async (userId: string): Promise<any> => {
-    const { data } = await apiClient.get(`/members/${userId}`);
+  /**
+   * Onboard a new member to the current gym
+   */
+  onboard: async (payload: MemberOnboardRequest): Promise<MemberOnboardResponse> => {
+    const { data } = await apiClient.post<MemberOnboardResponse>("/members/onboard", payload);
     return data;
   },
 
-  // Update member status
-  updateMemberStatus: async (
+  /**
+   * Get detailed information about a specific member
+   */
+  getDetail: async (userId: string): Promise<MemberDetailResponse> => {
+    const { data} = await apiClient.get<MemberDetailResponse>(`/members/${userId}`);
+    return data;
+  },
+
+  /**
+   * Update member status (activate/suspend)
+   */
+  updateStatus: async (userId: string, payload: MemberStatusUpdateRequest): Promise<MemberDetailResponse> => {
+    const { data } = await apiClient.patch<MemberDetailResponse>(`/members/${userId}/status`, payload);
+    return data;
+  },
+
+  /**
+   * Get member health records
+   */
+  getHealthRecords: async (userId: string): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.get<MemberHealthRecordsResponse>(`/members/${userId}/health-records`);
+    return data;
+  },
+
+  /**
+   * Update member health records
+   */
+  updateHealthRecords: async (
     userId: string,
-    status: string
-  ): Promise<void> => {
-    await apiClient.patch(`/members/${userId}/status`, { status });
+    payload: MemberHealthRecordsUpdateRequest
+  ): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.put<MemberHealthRecordsResponse>(
+      `/members/${userId}/health-records`,
+      payload
+    );
+    return data;
   },
 };

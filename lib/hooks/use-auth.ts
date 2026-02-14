@@ -33,12 +33,16 @@ export function useCurrentUser() {
 // Hook for login
 export function useLogin() {
   const router = useRouter();
-  const { setAuth, setGymContext } = useAuthStore();
+  const { setAuth, setGymContext, updateAccessToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: async (data) => {
+      // Clear any persisted gym context from previous session
+      // This ensures user must select gym again and get fresh token with gym_id
+      setGymContext(null);
+
       // Store access token
       setAuth({ id: "", email: "" } as any, data.access_token);
 
@@ -46,13 +50,9 @@ export function useLogin() {
       const userInfo = await authApi.getMe();
       setAuth(userInfo.user, data.access_token);
 
-      if (userInfo.gym_context) {
-        setGymContext(userInfo.gym_context);
-        router.push("/dashboard");
-      } else {
-        // No gym selected, go to gym selection
-        router.push("/select-gym");
-      }
+      // Always redirect to gym selection after login
+      // This ensures user explicitly selects gym and gets fresh token with gym_id
+      router.push("/select-gym");
 
       // Invalidate auth queries
       queryClient.invalidateQueries({ queryKey: authKeys.all });
@@ -99,8 +99,10 @@ export function useSetGymSession() {
         setGymContext(userInfo.gym_context);
       }
 
-      // Invalidate auth queries
+      // Invalidate all queries to fetch fresh data for new gym
       queryClient.invalidateQueries({ queryKey: authKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["reports"] }); // Invalidate all reports
+      queryClient.invalidateQueries({ queryKey: ["members"] }); // Invalidate members list
 
       // Redirect to dashboard
       router.push("/dashboard");
@@ -110,12 +112,13 @@ export function useSetGymSession() {
 
 // Hook to check authentication status
 export function useAuth() {
-  const { user, gymContext, isAuthenticated } = useAuthStore();
+  const { user, gymContext, isAuthenticated, _hasHydrated } = useAuthStore();
 
   return {
     user,
     gymContext,
     isAuthenticated,
     hasGymContext: !!gymContext,
+    hasHydrated: _hasHydrated,
   };
 }

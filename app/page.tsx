@@ -1,8 +1,46 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 export default function Home() {
+  const router = useRouter();
+  const { isAuthenticated, hasGymContext, hasHydrated } = useAuth();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    // Wait for Zustand to hydrate before redirecting
+    if (!hasHydrated) return;
+
+    if (isAuthenticated) {
+      // If user has gym context, go to dashboard
+      // If not, go to select-gym
+      router.push(hasGymContext ? "/dashboard" : "/select-gym");
+    }
+  }, [isAuthenticated, hasGymContext, hasHydrated, router]);
+
+  // Show loading state while checking auth
+  if (!hasHydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // If authenticated, don't flash the landing page
+  if (isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Redirecting...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
