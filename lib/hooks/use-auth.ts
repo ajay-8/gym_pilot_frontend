@@ -113,12 +113,13 @@ export function useSetGymSession() {
 
 // Hook to check authentication status
 export function useAuth() {
-  const { user, gymContext, isAuthenticated } = useAuthStore();
+  const { user, gymContext, isAuthenticated, _hasHydrated } = useAuthStore();
 
   return {
     user,
     gymContext,
     isAuthenticated,
     hasGymContext: !!gymContext,
+    hasHydrated: _hasHydrated,
   };
 }

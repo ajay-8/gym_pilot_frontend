@@ -8,12 +8,14 @@ interface AuthState {
   gymContext: GymContextResponse | null;
   accessToken: string | null;
   isAuthenticated: boolean;
+  _hasHydrated: boolean;
 
   // Actions
   setAuth: (user: AuthUserResponse, accessToken: string) => void;
   setGymContext: (gymContext: GymContextResponse | null) => void;
   clearAuth: () => void;
   updateAccessToken: (accessToken: string) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,6 +26,7 @@ export const useAuthStore = create<AuthState>()(
       gymContext: null,
       accessToken: null,
       isAuthenticated: false,
+      _hasHydrated: false,
 
       // Set authentication
       setAuth: (user, accessToken) => {
@@ -62,6 +65,11 @@ export const useAuthStore = create<AuthState>()(
 
         set({ accessToken });
       },
+
+      // Set hydration status
+      setHasHydrated: (hasHydrated) => {
+        set({ _hasHydrated: hasHydrated });
+      },
     }),
     {
       name: "gym-pilot-auth", // localStorage key
@@ -72,6 +80,9 @@ export const useAuthStore = create<AuthState>()(
         gymContext: state.gymContext,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

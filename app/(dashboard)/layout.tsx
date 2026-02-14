@@ -32,24 +32,24 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, gymContext, isAuthenticated } = useAuth();
+  const { user, gymContext, isAuthenticated, hasHydrated } = useAuth();
   const logout = useLogout();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (only after hydration)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hasHydrated && !isAuthenticated) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [hasHydrated, isAuthenticated, router]);
 
-  // Redirect to gym selection if no gym context
+  // Redirect to gym selection if no gym context (only after hydration)
   useEffect(() => {
-    if (isAuthenticated && !gymContext) {
+    if (hasHydrated && isAuthenticated && !gymContext) {
       router.push("/select-gym");
     }
-  }, [isAuthenticated, gymContext, router]);
+  }, [hasHydrated, isAuthenticated, gymContext, router]);
 
-  if (!isAuthenticated || !gymContext) {
+  if (!hasHydrated || !isAuthenticated || !gymContext) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
