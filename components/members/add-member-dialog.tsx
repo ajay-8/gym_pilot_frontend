@@ -231,8 +231,8 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              />
-            )}
+              )}
+            />
 
             <DialogFooter>
               <Button
