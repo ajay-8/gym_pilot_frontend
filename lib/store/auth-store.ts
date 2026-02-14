@@ -74,11 +74,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "gym-pilot-auth", // localStorage key
       storage: createJSONStorage(() => localStorage),
-      // Only persist user and gymContext, not the token
+      // Only persist user and gymContext, NOT isAuthenticated or token
+      // This ensures fresh login (and fresh token) on each browser session
       partialize: (state) => ({
         user: state.user,
         gymContext: state.gymContext,
-        isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
