@@ -22,8 +22,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMemberOnboard } from "@/lib/hooks/use-members";
+import { Gender } from "@/types/api";
 
 const formSchema = z.object({
   first_name: z.string().min(1, "First name is required").max(100),
@@ -34,6 +42,7 @@ const formSchema = z.object({
     .max(15)
     .regex(/^(\+91[-\s]?)?[6-9]\d{9}$/, "Invalid Indian phone number"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
   date_of_birth: z.string().optional(),
   membership_start_date: z.string().min(1, "Start date is required"),
 });
@@ -56,8 +65,9 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
       last_name: "",
       phone: "",
       email: "",
+      gender: undefined,
       date_of_birth: "",
-      membership_start_date: new Date().toISOString().split("T")[0], // Today's date
+      membership_start_date: new Date().toISOString().split("T")[0],
     },
   });
 
@@ -70,12 +80,12 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
         last_name: data.last_name || undefined,
         phone: data.phone,
         email: data.email || undefined,
+        gender: data.gender as Gender | undefined,
         date_of_birth: data.date_of_birth || undefined,
         membership_start_date: data.membership_start_date,
         roles: ["member"],
       });
 
-      // Success - close dialog and reset form
       form.reset();
       onOpenChange(false);
     } catch (error: unknown) {
@@ -94,7 +104,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Member</DialogTitle>
           <DialogDescription>
@@ -111,7 +121,6 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              {/* First Name */}
               <FormField
                 control={form.control}
                 name="first_name"
@@ -126,7 +135,6 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                 )}
               />
 
-              {/* Last Name */}
               <FormField
                 control={form.control}
                 name="last_name"
@@ -143,7 +151,6 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Phone */}
               <FormField
                 control={form.control}
                 name="phone"
@@ -158,7 +165,6 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                 )}
               />
 
-              {/* Email */}
               <FormField
                 control={form.control}
                 name="email"
@@ -175,11 +181,34 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Date of Birth */}
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="date_of_birth"
-                render={({ field }) => (
+                render=({field }) => (
                   <FormItem>
                     <FormLabel>Date of Birth</FormLabel>
                     <FormControl>
@@ -189,22 +218,21 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                   </FormItem>
                 )}
               />
-
-              {/* Membership Start Date */}
-              <FormField
-                control={form.control}
-                name="membership_start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Membership Start Date *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            <FormField
+              control={form.control}
+              name="membership_start_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Membership Start Date *</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              />
+            )}
 
             <DialogFooter>
               <Button

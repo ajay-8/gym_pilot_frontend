@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, CreditCard, Calendar, TrendingUp } from "lucide-react";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { AddMemberDialog } from "@/components/members/add-member-dialog";
 
 export default function DashboardPage() {
   const { user, gymContext } = useAuth();
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -84,7 +87,10 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Card className="cursor-pointer hover:border-primary transition-colors">
+            <Card
+              className="cursor-pointer hover:border-primary transition-colors"
+              onClick={() => setShowAddMemberDialog(true)}
+            >
               <CardHeader>
                 <CardTitle className="text-base">Add New Member</CardTitle>
                 <CardDescription className="text-sm">
@@ -151,6 +157,9 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Member Dialog */}
+      <AddMemberDialog open={showAddMemberDialog} onOpenChange={setShowAddMemberDialog} />
     </div>
   );
 }

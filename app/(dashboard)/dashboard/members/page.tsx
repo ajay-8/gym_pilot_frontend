@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import { StatusType } from "@/types/api";
-import { AddMemberDialog } from "./add-member-dialog";
+import { AddMemberDialog } from "@/components/members/add-member-dialog";
 
 // Helper function to get badge variant based on status
 function getStatusBadgeVariant(status: StatusType): "default" | "success" | "warning" | "destructive" | "secondary" {
