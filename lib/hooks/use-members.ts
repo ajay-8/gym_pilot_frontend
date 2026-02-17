@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { membersApi } from "../api/members";
 import {
+  BulkMemberImportRequest,
   MemberOnboardRequest,
   MemberStatusUpdateRequest,
+  MembershipRenewRequest,
   MemberHealthRecordsUpdateRequest,
-  PaginationParams,
+  MemberListParams,
 } from "@/types/api";
 import { useAuth } from "./use-auth";
 
@@ -12,19 +14,21 @@ import { useAuth } from "./use-auth";
 export const memberKeys = {
   all: ["members"] as const,
   lists: () => [...memberKeys.all, "list"] as const,
-  list: (gymId: string | undefined, params: PaginationParams) =>
+  list: (gymId: string | undefined, params: MemberListParams) =>
     [...memberKeys.lists(), gymId, params] as const,
   details: () => [...memberKeys.all, "detail"] as const,
   detail: (gymId: string | undefined, id: string) =>
     [...memberKeys.details(), gymId, id] as const,
   healthRecords: (gymId: string | undefined, id: string) =>
     [...memberKeys.all, "health-records", gymId, id] as const,
+  membershipHistory: (gymId: string | undefined, id: string) =>
+    [...memberKeys.all, "membership-history", gymId, id] as const,
 };
 
 /**
- * Hook to fetch paginated list of members
+ * Hook to fetch paginated list of members with search and filters
  */
-export function useMembers(params: PaginationParams = {}) {
+export function useMembers(params: MemberListParams = {}) {
   const { gymContext } = useAuth();
 
   return useQuery({
@@ -65,6 +69,23 @@ export function useMemberOnboard() {
 }
 
 /**
+ * Hook to bulk import members
+ */
+export function useMemberBulkImport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: BulkMemberImportRequest) => membersApi.bulkImport(payload),
+    onSuccess: () => {
+      // Invalidate members list to refetch with new members
+      queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
+      // Also invalidate dashboard to update member count
+      queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
+    },
+  });
+}
+
+/**
  * Hook to update member status
  */
 export function useMemberStatusUpdate() {
@@ -75,6 +96,60 @@ export function useMemberStatusUpdate() {
       membersApi.updateStatus(userId, payload),
     onSuccess: () => {
       // Invalidate all member details and lists for current gym
+      queryClient.invalidateQueries({ queryKey: memberKeys.details() });
+      queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
+      // Also invalidate dashboard to update stats
+      queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
+    },
+  });
+}
+
+/**
+ * Hook to renew member's membership
+ */
+export function useMembershipRenew() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: string; payload: MembershipRenewRequest }) =>
+      membersApi.renewMembership(userId, payload),
+    onSuccess: () => {
+      // Invalidate all member details and lists for current gym
+      queryClient.invalidateQueries({ queryKey: memberKeys.details() });
+      queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
+      // Also invalidate dashboard to update stats
+      queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
+    },
+  });
+}
+
+/**
+ * Hook to update member details
+ */
+export function useMemberUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: string; payload: MemberUpdateRequest }) =>
+      membersApi.update(userId, payload),
+    onSuccess: () => {
+      // Invalidate all member details and lists
+      queryClient.invalidateQueries({ queryKey: memberKeys.details() });
+      queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Hook to delete member
+ */
+export function useMemberDelete() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => membersApi.delete(userId),
+    onSuccess: () => {
+      // Invalidate all member details and lists
       queryClient.invalidateQueries({ queryKey: memberKeys.details() });
       queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
       // Also invalidate dashboard to update stats
@@ -109,5 +184,33 @@ export function useMemberHealthRecordsUpdate() {
       // Invalidate health records query
       queryClient.invalidateQueries({ queryKey: memberKeys.healthRecords(undefined, variables.userId) });
     },
+  });
+}
+
+/**
+ * Hook to fetch member's membership history
+ */
+export function useMembershipHistory(userId: string, enabled = true) {
+  const { gymContext } = useAuth();
+
+  return useQuery({
+    queryKey: memberKeys.membershipHistory(gymContext?.gym_id, userId),
+    queryFn: () => membersApi.getMembershipHistory(userId),
+    enabled: enabled && !!gymContext?.gym_id && !!userId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+/**
+ * Get member's membership audit history (timeline of changes from audit logs)
+ */
+export function useMembershipAuditHistory(userId: string, enabled = true) {
+  const { gymContext } = useAuth();
+
+  return useQuery({
+    queryKey: ["members", gymContext?.gym_id, userId, "audit-history"],
+    queryFn: () => membersApi.getMembershipAuditHistory(userId),
+    enabled: enabled && !!gymContext?.gym_id && !!userId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

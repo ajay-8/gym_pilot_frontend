@@ -32,6 +32,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useMemberOnboard } from "@/lib/hooks/use-members";
+import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
 import { Gender, ParticipantRole } from "@/types/api";
 
 const formSchema = z
@@ -50,6 +51,7 @@ const formSchema = z
       .array(z.enum(["member", "trainer", "staff", "admin", "owner"]))
       .min(1, "At least one role is required"),
     membership_start_date: z.string().optional(),
+    plan_id: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -62,6 +64,19 @@ const formSchema = z
     {
       message: "Membership start date is required when Member role is selected",
       path: ["membership_start_date"],
+    }
+  )
+  .refine(
+    (data) => {
+      // If "member" role is selected, plan_id is required
+      if (data.roles.includes("member")) {
+        return data.plan_id && data.plan_id.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Membership plan is required when Member role is selected",
+      path: ["plan_id"],
     }
   );
 
@@ -76,6 +91,9 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
   const [errorMessage, setErrorMessage] = useState("");
   const memberOnboard = useMemberOnboard();
 
+  // Lazy-load plans only when dialog is open
+  const { data: plansData } = useMembershipPlans({ page_size: 100 }, open);
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -87,6 +105,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
       date_of_birth: "",
       roles: ["member"],
       membership_start_date: new Date().toISOString().split("T")[0],
+      plan_id: "",
     },
   });
 
@@ -102,6 +121,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
         gender: data.gender as Gender | undefined,
         date_of_birth: data.date_of_birth || undefined,
         membership_start_date: data.membership_start_date || undefined,
+        plan_id: data.plan_id || undefined,
         roles: data.roles as ParticipantRole[],
       });
 
@@ -125,9 +145,9 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Member</DialogTitle>
+          <DialogTitle>Add New Gym Participant</DialogTitle>
           <DialogDescription>
-            Add a new member to your gym. Fill in their details below.
+            Add a new gym participant to your gym. Fill in their details below.
           </DialogDescription>
         </DialogHeader>
 
@@ -321,6 +341,42 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
               )}
             />
 
+            {form.watch("roles")?.includes("member") && plansData?.items && plansData.items.length > 0 && (
+              <FormField
+                control={form.control}
+                name="plan_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Membership Plan (Optional)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a plan (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {plansData.items
+                          .filter((plan) => plan.status === "active")
+                          .map((plan) => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              {plan.name} - ₹{plan.price}
+                              {plan.duration_days ? ` (${plan.duration_days} days)` : " (Unlimited)"}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Leave empty to onboard without a plan
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -331,7 +387,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={memberOnboard.isPending}>
-                {memberOnboard.isPending ? "Adding..." : "Add Member"}
+                {memberOnboard.isPending ? "Adding..." : "Add Gym Participant"}
               </Button>
             </DialogFooter>
           </form>

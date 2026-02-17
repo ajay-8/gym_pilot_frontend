@@ -168,6 +168,37 @@ export interface MemberOnboardResponse {
   roles: ParticipantRole[];
 }
 
+export interface BulkMemberImportItem {
+  phone: string;
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  date_of_birth?: string;
+  gender?: Gender;
+  plan_name: string;
+  membership_start_date: string;
+}
+
+export interface BulkMemberImportRequest {
+  members: BulkMemberImportItem[];
+}
+
+export interface BulkMemberImportResultItem {
+  row: number;
+  success: boolean;
+  user_id?: string;
+  error?: string;
+  phone: string;
+  first_name: string;
+}
+
+export interface BulkMemberImportResponse {
+  total: number;
+  success: number;
+  failed: number;
+  results: BulkMemberImportResultItem[];
+}
+
 export interface MembershipSummary {
   id: string;
   plan_id?: string;
@@ -193,8 +224,38 @@ export interface MemberDetailResponse {
   total_payments: number;
 }
 
+export interface MembershipHistoryItem {
+  id: string;
+  plan_id?: string;
+  plan_name?: string;
+  status: StatusType;
+  start_date: string;
+  end_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipHistoryResponse {
+  memberships: MembershipHistoryItem[];
+  total: number;
+}
+
 export interface MemberStatusUpdateRequest {
   status: StatusType;
+}
+
+export interface MembershipRenewRequest {
+  plan_id: string;
+  start_date?: string;
+}
+
+export interface MemberUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: Gender;
 }
 
 export interface EmergencyContact {
@@ -231,19 +292,207 @@ export interface MembershipPlanResponse {
   description?: string;
   duration_days?: number;
   price: number;
+  currency: string;
+  features?: Record<string, any>;
   status: StatusType;
   created_at: string;
   updated_at: string;
 }
 
+export interface MembershipPlanListResponse {
+  items: MembershipPlanResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface MembershipPlanCreateRequest {
+  name: string;
+  description?: string;
+  duration_days?: number;
+  price: number;
+  currency?: string;
+  features?: Record<string, any>;
+}
+
+export interface MembershipPlanUpdateRequest {
+  name?: string;
+  description?: string;
+  duration_days?: number;
+  price?: number;
+  currency?: string;
+  features?: Record<string, any>;
+  status?: StatusType;
+}
+
 // Reports Types
 export interface DashboardResponse {
+  // Member counts (participant access status)
+  total_members_count: number;
   active_members_count: number;
+  suspended_members_count: number;
+
+  // Membership subscription status counts
+  active_memberships_count: number;
+  expired_memberships_count: number;
+  cancelled_memberships_count: number;
+
+  // Activity
   check_ins_today: number;
   checked_in_now: number;
   expiring_memberships_7d: number;
   new_members_this_month: number;
   revenue_this_month: number;
+}
+
+// Attendance Report Types
+export interface DailyAttendance {
+  date: string;
+  check_in_count: number;
+  unique_visitors: number;
+}
+
+export interface AttendanceReportResponse {
+  total_check_ins: number;
+  unique_visitors: number;
+  avg_daily_check_ins: number;
+  daily_breakdown: DailyAttendance[];
+}
+
+// Membership Report Types
+export interface MembershipStatusBreakdown {
+  active: number;
+  expired: number;
+  cancelled: number;
+  frozen: number;
+}
+
+export interface PlanMembershipCount {
+  plan_name: string;
+  active_count: number;
+}
+
+export interface MonthlyMembershipTrend {
+  month: string; // "YYYY-MM"
+  new_count: number;
+}
+
+export interface MembershipReportResponse {
+  by_status: MembershipStatusBreakdown;
+  by_plan: PlanMembershipCount[];
+  expiring_in_7d: number;
+  expiring_in_14d: number;
+  expiring_in_30d: number;
+  monthly_trend: MonthlyMembershipTrend[];
+}
+
+// Revenue Report Types
+export interface PlanRevenue {
+  plan_name: string;
+  total_amount: number;
+  count: number;
+}
+
+export interface MonthlyRevenue {
+  month: string; // "YYYY-MM"
+  total_revenue: number;
+  membership_count: number;
+}
+
+export interface RevenueReportResponse {
+  total_revenue: number;
+  total_memberships: number;
+  by_plan: PlanRevenue[];
+  monthly_breakdown: MonthlyRevenue[];
+}
+
+// Lead Analytics Types
+export interface LeadSourceBreakdown {
+  source: string;
+  total_leads: number;
+  converted: number;
+  lost: number;
+  conversion_rate: number;
+  avg_days_to_convert: number | null;
+}
+
+export interface LeadStatusBreakdown {
+  status: string;
+  count: number;
+  percentage: number;
+}
+
+export interface LostReasonBreakdown {
+  reason: string;
+  count: number;
+  percentage: number;
+}
+
+export interface MonthlyLeadTrend {
+  month: string; // "YYYY-MM"
+  total_leads: number;
+  converted: number;
+  lost: number;
+}
+
+export interface LeadAnalyticsResponse {
+  total_leads: number;
+  total_converted: number;
+  total_lost: number;
+  total_active: number;
+  overall_conversion_rate: number;
+  by_source: LeadSourceBreakdown[];
+  by_status: LeadStatusBreakdown[];
+  lost_reasons: LostReasonBreakdown[];
+  monthly_trend: MonthlyLeadTrend[];
+}
+
+// Revenue Analytics Types
+export interface PaymentMethodRevenue {
+  payment_method: string;
+  total_amount: number;
+  transaction_count: number;
+  avg_transaction_value: number;
+  percentage_of_total: number;
+}
+
+export interface MonthlyRevenueAnalytics {
+  month: string; // "YYYY-MM"
+  total_revenue: number;
+  transaction_count: number;
+  avg_transaction_value: number;
+}
+
+export interface RevenueAnalyticsResponse {
+  total_revenue: number;
+  total_transactions: number;
+  avg_transaction_value: number;
+  by_payment_method: PaymentMethodRevenue[];
+  monthly_trend: MonthlyRevenueAnalytics[];
+}
+
+// Member Analytics Types
+export interface MonthlyMemberGrowth {
+  month: string; // "YYYY-MM"
+  new_members: number;
+  churned_members: number;
+  net_growth: number;
+  total_active: number;
+}
+
+export interface MembershipTypeDistribution {
+  plan_name: string;
+  active_count: number;
+  percentage: number;
+}
+
+export interface MemberAnalyticsResponse {
+  total_active_members: number;
+  total_new_members: number;
+  total_churned_members: number;
+  by_membership_type: MembershipTypeDistribution[];
+  monthly_growth: MonthlyMemberGrowth[];
 }
 
 // API Error Types
@@ -256,6 +505,13 @@ export interface APIError {
 export interface PaginationParams {
   page?: number;
   page_size?: number;
+}
+
+// Member List Params
+export interface MemberListParams extends PaginationParams {
+  search?: string;
+  status?: string;
+  plan_id?: string;
 }
 
 // Common Response Types

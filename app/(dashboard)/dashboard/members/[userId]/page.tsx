@@ -2,7 +2,10 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { useMemberDetail, useMemberStatusUpdate, useMemberHealthRecords, useMemberHealthRecordsUpdate } from "@/lib/hooks/use-members";
+import { useMemberDetail, useMemberStatusUpdate, useMembershipRenew, useMemberHealthRecords, useMemberHealthRecordsUpdate, useMemberDelete } from "@/lib/hooks/use-members";
+import { EditMemberDialog } from "@/components/members/edit-member-dialog";
+import { MembershipHistoryDialog } from "@/components/members/membership-history-dialog";
+import { useMembershipPlans, useMembershipPlanDetail } from "@/lib/hooks/use-membership-plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   Mail,
@@ -24,6 +28,8 @@ import {
   Edit2,
   Save,
   X,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { StatusType } from "@/types/api";
 import {
@@ -78,13 +84,32 @@ export default function MemberDetailPage() {
   const userId = params.userId as string;
 
   const { data: member, isLoading, error } = useMemberDetail(userId);
-  const { data: healthRecords, isLoading: isHealthLoading } = useMemberHealthRecords(userId);
-  const updateStatus = useMemberStatusUpdate();
-  const updateHealthRecords = useMemberHealthRecordsUpdate();
 
+  // State declarations
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [targetStatus, setTargetStatus] = useState<StatusType | null>(null);
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [isEditingHealth, setIsEditingHealth] = useState(false);
+
+  // Lazy-load health records only when editing
+  const { data: healthRecords, isLoading: isHealthLoading } = useMemberHealthRecords(userId, isEditingHealth);
+
+  // Fetch the current member's plan (only if they have one)
+  const { data: currentMemberPlan } = useMembershipPlanDetail(
+    member?.membership?.plan_id || "",
+    !!member?.membership?.plan_id
+  );
+
+  // Lazy-load ALL plans only when renew dialog opens (for selection dropdown)
+  const { data: plansData } = useMembershipPlans({ include_inactive: true }, showRenewDialog);
+
+  const updateStatus = useMemberStatusUpdate();
+  const renewMembership = useMembershipRenew();
+  const updateHealthRecords = useMemberHealthRecordsUpdate();
+  const deleteMember = useMemberDelete();
   const [healthForm, setHealthForm] = useState({
     emergency_contact: {
       name: "",
@@ -111,9 +136,47 @@ export default function MemberDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteMember.mutateAsync(userId);
+      setShowDeleteDialog(false);
+      router.push("/dashboard/members");
+    } catch (err) {
+      console.error("Failed to delete member:", err);
+    }
+  };
+
   const openStatusDialog = (status: StatusType) => {
+    // Validate: Cannot activate if TIME-BASED membership is cancelled or expired
+    if (status === "active" && member?.membership) {
+      const membershipStatus = member.membership.status;
+      const isLifetime = !member.membership.end_date; // Lifetime = no end_date
+
+      // Only block activation for time-based memberships that are cancelled/expired
+      if (!isLifetime && (membershipStatus === "cancelled" || membershipStatus === "expired")) {
+        alert("Cannot activate: membership is " + membershipStatus + ". Please renew membership first.");
+        return;
+      }
+
+      // Lifetime memberships can be reactivated even if cancelled
+    }
     setTargetStatus(status);
     setShowStatusDialog(true);
+  };
+
+  const handleRenewMembership = async () => {
+    if (!selectedPlanId) return;
+
+    try {
+      await renewMembership.mutateAsync({
+        userId,
+        payload: { plan_id: selectedPlanId },
+      });
+      setShowRenewDialog(false);
+      setSelectedPlanId("");
+    } catch (err) {
+      console.error("Failed to renew membership:", err);
+    }
   };
 
   const handleEditHealth = () => {
@@ -225,13 +288,28 @@ export default function MemberDetailPage() {
             <h1 className="text-3xl font-bold tracking-tight">
               {member.first_name} {member.last_name}
             </h1>
-            <p className="text-muted-foreground mt-1">Member Details</p>
+            <p className="text-muted-foreground mt-1">Gym Participant Details</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={getStatusBadgeVariant(member.status)} className="text-sm">
             {formatStatus(member.status)}
           </Badge>
+          <Button
+            variant="outline"
+            onClick={() => setShowEditDialog(true)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </Button>
           {isActive ? (
             <Button
               variant="outline"
@@ -258,7 +336,7 @@ export default function MemberDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>
-          <CardDescription>Basic member details and contact information</CardDescription>
+          <CardDescription>Basic gym participant details and contact information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,11 +398,31 @@ export default function MemberDetailPage() {
       {member.membership && (
         <Card>
           <CardHeader>
-            <CardTitle>Membership</CardTitle>
-            <CardDescription>Current membership plan and status</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Membership</CardTitle>
+                <CardDescription>Current membership plan and status</CardDescription>
+              </div>
+              <MembershipHistoryDialog userId={userId} />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {currentMemberPlan && (
+                <div className="flex items-center gap-3">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Plan</p>
+                    <p className="font-medium">{currentMemberPlan.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ₹{currentMemberPlan.price}
+                      {currentMemberPlan.duration_days
+                        ? ` / ${currentMemberPlan.duration_days} days`
+                        : " / Unlimited"}
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <CreditCard className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -351,6 +449,17 @@ export default function MemberDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Renew Membership Button - Only for time-based memberships */}
+            {member.membership.end_date &&
+             (member.membership.status === "cancelled" || member.membership.status === "expired") && (
+              <div className="mt-4 pt-4 border-t">
+                <Button onClick={() => setShowRenewDialog(true)} className="w-full">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Renew Membership
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -359,7 +468,7 @@ export default function MemberDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle>Activity Summary</CardTitle>
-          <CardDescription>Member activity and engagement</CardDescription>
+          <CardDescription>Gym participant activity and engagement</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -677,6 +786,74 @@ export default function MemberDetailPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleStatusUpdate} disabled={updateStatus.isPending}>
               {updateStatus.isPending ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Renew Membership Dialog */}
+      <AlertDialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Renew Membership</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select a new membership plan for {member.first_name}. The membership will be activated immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="plan-select">Membership Plan</Label>
+            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <SelectTrigger id="plan-select" className="mt-2">
+                <SelectValue placeholder="Select a plan" />
+              </SelectTrigger>
+              <SelectContent>
+                {plansData?.items
+                  ?.filter((plan) => plan.status === "active")
+                  .map((plan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - ₹{plan.price}
+                      {plan.duration_days ? ` (${plan.duration_days} days)` : " (Unlimited)"}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRenewMembership}
+              disabled={!selectedPlanId || renewMembership.isPending}
+            >
+              {renewMembership.isPending ? "Renewing..." : "Renew Membership"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Member Dialog */}
+      <EditMemberDialog
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        member={member}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {member.first_name} {member.last_name}? This action cannot be undone and will remove all their data from this gym.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteMember.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMember.isPending ? "Deleting..." : "Delete Member"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
