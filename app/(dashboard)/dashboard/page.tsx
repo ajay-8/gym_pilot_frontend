@@ -28,21 +28,82 @@ export default function DashboardPage() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Gym Participants</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isDashboardLoading ? (
               <div className="text-2xl font-bold">...</div>
             ) : (
-              <>
-                <div className="text-2xl font-bold">{dashboard?.active_members_count || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  {dashboard?.active_members_count === 0
-                    ? "No members yet"
-                    : `${dashboard?.new_members_this_month || 0} new this month`}
-                </p>
-              </>
+              <div className="space-y-3">
+                <div className="text-3xl font-bold">{dashboard?.total_members_count || 0}</div>
+
+                {/* Access Status & Subscription Status - Side by Side */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Access Status */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Gym Access
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-950">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                          {dashboard?.active_members_count || 0} Active
+                        </span>
+                      </div>
+                      {(dashboard?.suspended_members_count || 0) > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-orange-50 dark:bg-orange-950">
+                          <div className="w-2 h-2 rounded-full bg-orange-500" />
+                          <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                            {dashboard?.suspended_members_count || 0} Suspended
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Subscription Status */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Subscriptions
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                          {dashboard?.active_memberships_count || 0} Active
+                        </span>
+                      </div>
+                      {(dashboard?.expired_memberships_count || 0) > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 dark:bg-amber-950">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                            {dashboard?.expired_memberships_count || 0} Expired
+                          </span>
+                        </div>
+                      )}
+                      {(dashboard?.cancelled_memberships_count || 0) > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-50 dark:bg-red-950">
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                          <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                            {dashboard?.cancelled_memberships_count || 0} Cancelled
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* New members this month */}
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    {dashboard?.total_members_count === 0
+                      ? "No members yet"
+                      : `+${dashboard?.new_members_this_month || 0} new this month`}
+                  </p>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -124,9 +185,9 @@ export default function DashboardPage() {
               onClick={() => setShowAddMemberDialog(true)}
             >
               <CardHeader>
-                <CardTitle className="text-base">Add New Member</CardTitle>
+                <CardTitle className="text-base">Add New Gym Participant</CardTitle>
                 <CardDescription className="text-sm">
-                  Onboard a new member to your gym
+                  Onboard a new gym participant to your gym
                 </CardDescription>
               </CardHeader>
             </Card>
