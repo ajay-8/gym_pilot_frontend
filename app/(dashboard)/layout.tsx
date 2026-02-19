@@ -13,6 +13,7 @@ import {
   LogOut,
   Building2,
   ChevronRight,
+  ScanLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ import { useEffect } from "react";
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home, roles: ["owner", "admin", "staff", "trainer", "member"] },
   { name: "Members", href: "/dashboard/members", icon: Users, roles: ["owner", "admin", "staff"] },
+  { name: "Check-ins", href: "/dashboard/check-ins", icon: ScanLine, roles: ["owner", "admin", "staff"] },
   { name: "Memberships", href: "/dashboard/memberships", icon: CreditCard, roles: ["owner", "admin", "staff"] },
   { name: "Classes", href: "/dashboard/classes", icon: Calendar, roles: ["owner", "admin", "staff", "trainer"] },
   { name: "Trainers", href: "/dashboard/trainers", icon: Dumbbell, roles: ["owner", "admin"] },
