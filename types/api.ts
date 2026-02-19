@@ -31,6 +31,57 @@ export interface User {
   updated_at: string;
 }
 
+// Profile types
+export interface UserProfileResponse {
+  id: string;
+  email: string;
+  phone: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  status: StatusType;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserProfileUpdateRequest {
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+}
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+// Staff types
+export interface StaffListItem {
+  user_id: string;
+  participant_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  roles: string[];
+  joined_at: string;
+}
+
+export interface StaffListResponse {
+  items: StaffListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface StaffListParams {
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
 // Auth Types
 export interface LoginRequest {
   email: string;
