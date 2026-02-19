@@ -50,11 +50,50 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        // Design system brand colors (use directly in code)
+        emerald: {
+          400: "#34d399",
+          500: "#10b981",
+          600: "#059669",
+        },
+        violet: {
+          400: "#a78bfa",
+          500: "#8b5cf6",
+          600: "#7c3aed",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      backgroundImage: {
+        "gradient-primary": "linear-gradient(135deg, #10b981 0%, #8b5cf6 100%)",
+        "gradient-green": "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
+        "gradient-purple": "linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)",
+        "gradient-card": "linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(139,92,246,0.06) 100%)",
+        "gradient-sidebar": "linear-gradient(180deg, rgba(16,185,129,0.04) 0%, rgba(139,92,246,0.04) 100%)",
+      },
+      boxShadow: {
+        "glow-sm": "0 0 12px rgba(16, 185, 129, 0.12)",
+        "glow-md": "0 0 24px rgba(16, 185, 129, 0.18), 0 0 48px rgba(16, 185, 129, 0.06)",
+        "glow-purple-sm": "0 0 12px rgba(139, 92, 246, 0.12)",
+        "card-hover": "0 8px 32px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(16, 185, 129, 0.12)",
+      },
+      animation: {
+        "fade-in": "fadeIn 0.3s ease-in-out",
+        "slide-up": "slideUp 0.3s ease-out",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
     },
   },

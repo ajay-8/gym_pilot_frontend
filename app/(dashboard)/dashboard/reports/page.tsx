@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, TrendingUp, DollarSign, BarChart3, PieChart, Calendar } from "lucide-react";
+import { Users, TrendingUp, DollarSign, BarChart3, Calendar } from "lucide-react";
 
 const reports = [
   {
@@ -10,41 +9,54 @@ const reports = [
     description: "Status breakdown, plan distribution, and growth trends",
     href: "/dashboard/reports/memberships",
     icon: Users,
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
+    bar: "stat-bar-blue",
+    iconBg: "rgba(59, 130, 246, 0.12)",
+    iconColor: "#3b82f6",
+    dot: "#3b82f6",
+    disabled: false,
   },
   {
     title: "Revenue Analytics",
     description: "Payment method breakdown and revenue trends",
     href: "/dashboard/reports/revenue",
     icon: DollarSign,
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-50 dark:bg-green-950",
+    bar: "stat-bar-green",
+    iconBg: "rgba(16, 185, 129, 0.12)",
+    iconColor: "#10b981",
+    dot: "#10b981",
+    disabled: false,
   },
   {
     title: "Attendance Report",
     description: "Daily check-ins and visitor trends",
     href: "/dashboard/reports/attendance",
     icon: Calendar,
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-50 dark:bg-purple-950",
+    bar: "stat-bar-purple",
+    iconBg: "rgba(139, 92, 246, 0.12)",
+    iconColor: "#8b5cf6",
+    dot: "#8b5cf6",
+    disabled: false,
   },
   {
     title: "Member Analytics",
-    description: "Growth metrics and membership type distribution (Coming soon)",
+    description: "Growth metrics and membership type distribution",
     href: "#",
     icon: TrendingUp,
-    color: "text-amber-600 dark:text-amber-400",
-    bgColor: "bg-amber-50 dark:bg-amber-950",
+    bar: "stat-bar-amber",
+    iconBg: "rgba(245, 158, 11, 0.12)",
+    iconColor: "#f59e0b",
+    dot: "#f59e0b",
     disabled: true,
   },
   {
     title: "Lead Analytics",
-    description: "Conversion metrics and source breakdown (Coming soon)",
+    description: "Conversion metrics and source breakdown",
     href: "#",
     icon: BarChart3,
-    color: "text-indigo-600 dark:text-indigo-400",
-    bgColor: "bg-indigo-50 dark:bg-indigo-950",
+    bar: "stat-bar-blue",
+    iconBg: "rgba(99, 102, 241, 0.12)",
+    iconColor: "#6366f1",
+    dot: "#6366f1",
     disabled: true,
   },
 ];
@@ -54,87 +66,95 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
+        <h1 className="text-3xl font-bold tracking-tight gradient-text">Reports & Analytics</h1>
         <p className="text-muted-foreground mt-1">
           Access comprehensive reports and insights about your gym's performance
         </p>
       </div>
 
       {/* Report Cards Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => {
           const Icon = report.icon;
-          const CardWrapper = report.disabled ? "div" : Link;
-          const cardProps = report.disabled ? {} : { href: report.href };
 
-          return (
-            <CardWrapper key={report.title} {...cardProps}>
-              <Card
-                className={
-                  report.disabled
-                    ? "opacity-60 cursor-not-allowed"
-                    : "cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02]"
-                }
+          if (report.disabled) {
+            return (
+              <div
+                key={report.title}
+                className="rounded-xl overflow-hidden opacity-40 cursor-not-allowed"
+                style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
               >
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-lg ${report.bgColor}`}>
-                      <Icon className={`h-6 w-6 ${report.color}`} />
+                <div className={`h-1 ${report.bar}`} />
+                <div className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2.5 rounded-lg" style={{ background: report.iconBg }}>
+                      <Icon className="h-5 w-5" style={{ color: report.iconColor }} />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{report.title}</CardTitle>
+                      <h3 className="font-semibold">{report.title}</h3>
+                      <span className="text-xs text-muted-foreground">Coming soon</span>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">{report.description}</CardDescription>
-                </CardContent>
-              </Card>
-            </CardWrapper>
+                  <p className="text-sm text-muted-foreground">{report.description}</p>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <Link key={report.title} href={report.href}>
+              <div
+                className="rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group"
+                style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+              >
+                <div className={`h-1 ${report.bar}`} />
+                <div className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div
+                      className="p-2.5 rounded-lg transition-transform group-hover:scale-110"
+                      style={{ background: report.iconBg }}
+                    >
+                      <Icon className="h-5 w-5" style={{ color: report.iconColor }} />
+                    </div>
+                    <h3 className="font-semibold">{report.title}</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{report.description}</p>
+                </div>
+              </div>
+            </Link>
           );
         })}
       </div>
 
-      {/* Quick Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Available Reports</CardTitle>
-          <CardDescription>
-            Choose from the following reports to gain insights into your gym's operations
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-              <div>
-                <p className="font-medium">Membership Report</p>
-                <p className="text-sm text-muted-foreground">
-                  Track membership status, plan distribution, expiring memberships, and monthly growth trends
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
-              <div>
-                <p className="font-medium">Revenue Analytics</p>
-                <p className="text-sm text-muted-foreground">
-                  Analyze revenue by payment method, transaction volume, and monthly trends
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-2 h-2 rounded-full bg-purple-500 mt-2" />
-              <div>
-                <p className="font-medium">Attendance Report</p>
-                <p className="text-sm text-muted-foreground">
-                  Monitor daily check-ins, unique visitors, and identify peak days
-                </p>
-              </div>
-            </div>
+      {/* Report Descriptions */}
+      <div
+        className="rounded-xl p-6"
+        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+      >
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+            <BarChart3 className="h-4 w-4" style={{ color: "#10b981" }} />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h2 className="font-semibold">Available Reports</h2>
+            <p className="text-sm text-muted-foreground">What each report covers</p>
+          </div>
+        </div>
+        <div className="space-y-4">
+          {reports.filter((r) => !r.disabled).map((report) => (
+            <div key={report.title} className="flex items-start gap-3">
+              <div
+                className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
+                style={{ background: report.dot }}
+              />
+              <div>
+                <p className="font-medium text-sm">{report.title}</p>
+                <p className="text-sm text-muted-foreground">{report.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

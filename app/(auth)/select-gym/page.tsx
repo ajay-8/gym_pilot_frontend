@@ -60,15 +60,18 @@ export default function SelectGymPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="inline-flex items-center gap-2 mb-6">
-            <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+            <div
+              className="h-10 w-10 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #10b981 0%, #8b5cf6 100%)" }}
+            >
               <span className="text-white font-bold text-xl">GP</span>
             </div>
-            <span className="text-2xl font-bold">Gym Pilot</span>
+            <span className="text-2xl font-bold gradient-text">Gym Pilot</span>
           </div>
           <h1 className="text-3xl font-bold mt-4">
             {gymContext ? "Switch Gym" : "Select Your Gym"}

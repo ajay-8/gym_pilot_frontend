@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMembers } from "@/lib/hooks/use-members";
 import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
+import { useMembershipReport } from "@/lib/hooks/use-reports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +105,9 @@ export default function MembersPage() {
   // Lazy-load membership plans only when filter dropdown is opened
   const { data: plansData } = useMembershipPlans({ page_size: 100 }, showFilters);
 
+  // Membership stats for summary bar (no date filter = all-time breakdown)
+  const { data: membershipReport } = useMembershipReport();
+
   // Delete mutation
   const deleteMember = useMemberDelete();
 
@@ -162,9 +166,9 @@ export default function MembersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gym Participants</h1>
+          <h1 className="text-3xl font-bold tracking-tight gradient-text">Members</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your gym members and their memberships
+            Paying gym members and their active subscriptions
           </p>
         </div>
         <div className="flex gap-2">
@@ -178,20 +182,78 @@ export default function MembersPage() {
           </Button>
           <Button onClick={() => setShowAddDialog(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
-            Add Gym Participant
+            Add Member
           </Button>
         </div>
+      </div>
+
+      {/* Membership Stats Bar */}
+      <div className="grid gap-3 sm:grid-cols-4">
+        {[
+          {
+            label: "Total Members",
+            value: (membershipReport
+              ? membershipReport.by_status.active + membershipReport.by_status.expired + membershipReport.by_status.cancelled + membershipReport.by_status.frozen
+              : null),
+            bar: "stat-bar-blue",
+            iconBg: "rgba(59,130,246,0.1)",
+            iconColor: "#3b82f6",
+          },
+          {
+            label: "Active Members",
+            value: membershipReport?.by_status.active ?? null,
+            bar: "stat-bar-green",
+            iconBg: "rgba(16,185,129,0.1)",
+            iconColor: "#10b981",
+          },
+          {
+            label: "Expired",
+            value: membershipReport?.by_status.expired ?? null,
+            bar: "stat-bar-amber",
+            iconBg: "rgba(245,158,11,0.1)",
+            iconColor: "#f59e0b",
+          },
+          {
+            label: "Cancelled",
+            value: membershipReport?.by_status.cancelled ?? null,
+            bar: "stat-bar-blue",
+            iconBg: "rgba(107,114,128,0.1)",
+            iconColor: "#6b7280",
+          },
+        ].map(({ label, value, bar, iconBg, iconColor }) => (
+          <div
+            key={label}
+            className="rounded-xl overflow-hidden"
+            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+          >
+            <div className={`h-1 ${bar}`} />
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{label}</span>
+              <span
+                className="text-xl font-bold"
+                style={{ color: value === null ? undefined : iconColor }}
+              >
+                {value === null ? "—" : value}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Search and Filters */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Search & Filter</CardTitle>
-              <CardDescription>
-                Search by name, email, or phone. Filter by status or plan.
-              </CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+                <Search className="h-4 w-4" style={{ color: "#10b981" }} />
+              </div>
+              <div>
+                <CardTitle>Search & Filter</CardTitle>
+                <CardDescription>
+                  Search by name, email, or phone. Filter by status or plan.
+                </CardDescription>
+              </div>
             </div>
             <Button
               variant="outline"
@@ -292,12 +354,19 @@ export default function MembersPage() {
       {/* Members Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {hasActiveFilters ? "Filtered Gym Participants" : "All Gym Participants"}
-          </CardTitle>
-          <CardDescription>
-            {data ? `${data.total} total member${data.total === 1 ? "" : "s"}` : "Loading..."}
-          </CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.1)" }}>
+              <UserPlus className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+            </div>
+            <div>
+              <CardTitle>
+                {hasActiveFilters ? "Filtered Members" : "All Members"}
+              </CardTitle>
+              <CardDescription>
+                {data ? `${data.total} total member${data.total === 1 ? "" : "s"}` : "Loading..."}
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -375,34 +444,35 @@ export default function MembersPage() {
                 </TableBody>
               </Table>
 
-              {/* Pagination */}
-              {data.total_pages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <div className="text-sm text-muted-foreground">
-                    Page {page} of {data.total_pages}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePreviousPage}
-                      disabled={page === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleNextPage}
-                      disabled={page >= data.total_pages}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+              {/* Pagination — always visible */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Showing {Math.min((page - 1) * pageSize + 1, data.total)}–{Math.min(page * pageSize, data.total)} of {data.total} member{data.total !== 1 ? "s" : ""}
                 </div>
-              )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreviousPage}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-1">
+                    {page} / {data.total_pages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={page >= data.total_pages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -426,7 +496,7 @@ export default function MembersPage() {
                   </p>
                   <Button onClick={() => setShowAddDialog(true)}>
                     <UserPlus className="mr-2 h-4 w-4" />
-                    Add Gym Participant
+                    Add Member
                   </Button>
                 </>
               )}
