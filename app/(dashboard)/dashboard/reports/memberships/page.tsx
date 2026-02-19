@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMembershipReport } from "@/lib/hooks/use-reports";
 import { Users, TrendingUp, AlertCircle, Calendar } from "lucide-react";
@@ -20,15 +19,23 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Color palette for charts
 const STATUS_COLORS = {
-  active: "#10b981", // green-500
-  expired: "#f59e0b", // amber-500
-  cancelled: "#ef4444", // red-500
-  frozen: "#6366f1", // indigo-500
+  active: "#10b981",
+  expired: "#f59e0b",
+  cancelled: "#ef4444",
+  frozen: "#6366f1",
 };
 
 const CHART_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"];
+
+const darkTooltipStyle = {
+  contentStyle: {
+    background: "hsl(222 18% 8%)",
+    border: "1px solid hsl(222 16% 14%)",
+    borderRadius: "8px",
+    color: "hsl(210 20% 90%)",
+  },
+};
 
 export default function MembershipReportPage() {
   const { data: report, isLoading, error } = useMembershipReport();
@@ -51,11 +58,8 @@ export default function MembershipReportPage() {
     );
   }
 
-  if (!report) {
-    return null;
-  }
+  if (!report) return null;
 
-  // Prepare data for status pie chart
   const statusData = [
     { name: "Active", value: report.by_status.active, color: STATUS_COLORS.active },
     { name: "Expired", value: report.by_status.expired, color: STATUS_COLORS.expired },
@@ -63,14 +67,12 @@ export default function MembershipReportPage() {
     { name: "Frozen", value: report.by_status.frozen, color: STATUS_COLORS.frozen },
   ].filter((item) => item.value > 0);
 
-  // Prepare data for plan distribution bar chart
   const planData = report.by_plan.map((item, index) => ({
     name: item.plan_name,
     count: item.active_count,
     fill: CHART_COLORS[index % CHART_COLORS.length],
   }));
 
-  // Prepare data for monthly trend line chart
   const trendData = report.monthly_trend.map((item) => ({
     month: item.month,
     new_memberships: item.new_count,
@@ -86,176 +88,229 @@ export default function MembershipReportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Membership Report</h1>
+        <h1 className="text-3xl font-bold tracking-tight gradient-text">Membership Report</h1>
         <p className="text-muted-foreground mt-1">
           Comprehensive overview of membership status, distribution, and trends
         </p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Memberships</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalMemberships}</div>
-            <p className="text-xs text-muted-foreground">All time memberships</p>
-          </CardContent>
-        </Card>
+      {/* Expiry Alert */}
+      {report.expiring_in_7d > 0 && (
+        <div
+          className="rounded-xl p-4 flex items-start gap-3"
+          style={{ background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.3)" }}
+        >
+          <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" style={{ color: "#f59e0b" }} />
+          <p className="text-sm">
+            <span className="font-semibold" style={{ color: "#f59e0b" }}>{report.expiring_in_7d}</span>{" "}
+            membership{report.expiring_in_7d === 1 ? "" : "s"} expiring in the next 7 days.
+            {report.expiring_in_14d - report.expiring_in_7d > 0 && (
+              <> Additionally,{" "}
+                <span className="font-semibold" style={{ color: "#f59e0b" }}>
+                  {report.expiring_in_14d - report.expiring_in_7d}
+                </span>{" "}
+                more within 14 days.
+              </>
+            )}{" "}
+            <span className="text-muted-foreground">Consider reaching out for renewal.</span>
+          </p>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{report.by_status.active}</div>
-            <p className="text-xs text-muted-foreground">
+      {/* Key Metrics */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-blue" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">Total Memberships</span>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(59, 130, 246, 0.1)" }}>
+                <Users className="h-4 w-4" style={{ color: "#3b82f6" }} />
+              </div>
+            </div>
+            <div className="text-3xl font-bold">{totalMemberships}</div>
+            <p className="text-xs text-muted-foreground mt-1">All time memberships</p>
+          </div>
+        </div>
+
+        {/* Active */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-green" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">Active Now</span>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+                <TrendingUp className="h-4 w-4" style={{ color: "#10b981" }} />
+              </div>
+            </div>
+            <div className="text-3xl font-bold">{report.by_status.active}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               {totalMemberships > 0
                 ? `${((report.by_status.active / totalMemberships) * 100).toFixed(1)}% of total`
                 : "No memberships"}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Expiring in 7 Days</CardTitle>
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{report.expiring_in_7d}</div>
-            <p className="text-xs text-muted-foreground">Urgent: needs attention</p>
-          </CardContent>
-        </Card>
+        {/* Expiring 7d */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-amber" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">Expiring in 7 Days</span>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(245, 158, 11, 0.1)" }}>
+                <AlertCircle className="h-4 w-4" style={{ color: "#f59e0b" }} />
+              </div>
+            </div>
+            <div className="text-3xl font-bold" style={{ color: report.expiring_in_7d > 0 ? "#f59e0b" : undefined }}>
+              {report.expiring_in_7d}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Urgent: needs attention</p>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Expiring in 30 Days</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{report.expiring_in_30d}</div>
-            <p className="text-xs text-muted-foreground">Plan renewal campaigns</p>
-          </CardContent>
-        </Card>
+        {/* Expiring 30d */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-amber" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-muted-foreground">Expiring in 30 Days</span>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(245, 158, 11, 0.1)" }}>
+                <Calendar className="h-4 w-4" style={{ color: "#f59e0b" }} />
+              </div>
+            </div>
+            <div className="text-3xl font-bold">{report.expiring_in_30d}</div>
+            <p className="text-xs text-muted-foreground mt-1">Plan renewal campaigns</p>
+          </div>
+        </div>
       </div>
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Status Breakdown Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Membership Status Breakdown</CardTitle>
-            <CardDescription>Distribution of memberships by status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {statusData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No membership data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Plan Distribution Bar Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Members by Plan</CardTitle>
-            <CardDescription>Distribution of active memberships across plans</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {planData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={planData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                No active memberships
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Monthly Trend Line Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Monthly Membership Growth</CardTitle>
-          <CardDescription>New memberships created over the last 12 months</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {trendData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="new_memberships"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  name="New Memberships"
-                />
-              </LineChart>
+        {/* Status Pie Chart */}
+        <div className="rounded-xl p-6" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+              <Users className="h-4 w-4" style={{ color: "#10b981" }} />
+            </div>
+            <div>
+              <h2 className="font-semibold">Membership Status Breakdown</h2>
+              <p className="text-sm text-muted-foreground">Distribution by status</p>
+            </div>
+          </div>
+          {statusData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  outerRadius={90}
+                  dataKey="value"
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip {...darkTooltipStyle} />
+                <Legend wrapperStyle={{ color: "hsl(215 14% 48%)", fontSize: 12 }} />
+              </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-              No trend data available
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+              No membership data available
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Expiring Memberships Alert */}
-      {report.expiring_in_7d > 0 && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <span className="font-semibold">{report.expiring_in_7d}</span> membership
-            {report.expiring_in_7d === 1 ? "" : "s"} expiring in the next 7 days.{" "}
-            {report.expiring_in_14d - report.expiring_in_7d > 0 && (
-              <>
-                Additionally, <span className="font-semibold">{report.expiring_in_14d - report.expiring_in_7d}</span>{" "}
-                more will expire within 14 days.
-              </>
-            )}{" "}
-            Consider reaching out for renewal.
-          </AlertDescription>
-        </Alert>
-      )}
+        {/* Plan Distribution Bar Chart */}
+        <div className="rounded-xl p-6" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(59, 130, 246, 0.1)" }}>
+              <TrendingUp className="h-4 w-4" style={{ color: "#3b82f6" }} />
+            </div>
+            <div>
+              <h2 className="font-semibold">Active Members by Plan</h2>
+              <p className="text-sm text-muted-foreground">Distribution across plans</p>
+            </div>
+          </div>
+          {planData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={planData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 16% 14%)" />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  tick={{ fill: "hsl(215 14% 48%)", fontSize: 11 }}
+                  axisLine={{ stroke: "hsl(222 16% 14%)" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "hsl(215 14% 48%)", fontSize: 11 }}
+                  axisLine={{ stroke: "hsl(222 16% 14%)" }}
+                  tickLine={false}
+                />
+                <Tooltip {...darkTooltipStyle} />
+                <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+              No active memberships
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Monthly Trend */}
+      <div className="rounded-xl p-6" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+            <TrendingUp className="h-4 w-4" style={{ color: "#10b981" }} />
+          </div>
+          <div>
+            <h2 className="font-semibold">Monthly Membership Growth</h2>
+            <p className="text-sm text-muted-foreground">New memberships over the last 12 months</p>
+          </div>
+        </div>
+        {trendData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(222 16% 14%)" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: "hsl(215 14% 48%)", fontSize: 11 }}
+                axisLine={{ stroke: "hsl(222 16% 14%)" }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "hsl(215 14% 48%)", fontSize: 11 }}
+                axisLine={{ stroke: "hsl(222 16% 14%)" }}
+                tickLine={false}
+              />
+              <Tooltip {...darkTooltipStyle} />
+              <Legend wrapperStyle={{ color: "hsl(215 14% 48%)", fontSize: 12 }} />
+              <Line
+                type="monotone"
+                dataKey="new_memberships"
+                stroke="#10b981"
+                strokeWidth={2}
+                name="New Memberships"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+            No trend data available
+          </div>
+        )}
+      </div>
     </div>
   );
 }

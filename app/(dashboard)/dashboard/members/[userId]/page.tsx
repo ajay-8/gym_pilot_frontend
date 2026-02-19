@@ -285,7 +285,7 @@ export default function MemberDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight gradient-text">
               {member.first_name} {member.last_name}
             </h1>
             <p className="text-muted-foreground mt-1">Gym Participant Details</p>
@@ -335,59 +335,78 @@ export default function MemberDetailPage() {
       {/* Personal Information */}
       <Card>
         <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>Basic gym participant details and contact information</CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+              <User className="h-4 w-4" style={{ color: "#10b981" }} />
+            </div>
+            <div>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>Basic gym participant details and contact information</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {member.email && (
               <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.08)" }}>
+                  <Mail className="h-4 w-4" style={{ color: "#10b981" }} />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{member.email}</p>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-medium text-sm">{member.email}</p>
                 </div>
               </div>
             )}
             {member.phone && (
               <div className="flex items-center gap-3">
-                <Phone className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.08)" }}>
+                  <Phone className="h-4 w-4" style={{ color: "#10b981" }} />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">{member.phone}</p>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="font-medium text-sm">{member.phone}</p>
                 </div>
               </div>
             )}
             {member.date_of_birth && (
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 rounded-lg" style={{ background: "rgba(245, 158, 11, 0.08)" }}>
+                  <Calendar className="h-4 w-4" style={{ color: "#f59e0b" }} />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Date of Birth</p>
-                  <p className="font-medium">{formatDate(member.date_of_birth)}</p>
+                  <p className="text-xs text-muted-foreground">Date of Birth</p>
+                  <p className="font-medium text-sm">{formatDate(member.date_of_birth)}</p>
                 </div>
               </div>
             )}
             {member.gender && (
               <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-muted-foreground" />
+                <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.08)" }}>
+                  <User className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+                </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Gender</p>
-                  <p className="font-medium capitalize">{member.gender.replace("_", " ")}</p>
+                  <p className="text-xs text-muted-foreground">Gender</p>
+                  <p className="font-medium text-sm capitalize">{member.gender.replace("_", " ")}</p>
                 </div>
               </div>
             )}
             <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <div className="p-2 rounded-lg" style={{ background: "rgba(245, 158, 11, 0.08)" }}>
+                <Calendar className="h-4 w-4" style={{ color: "#f59e0b" }} />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Joined</p>
-                <p className="font-medium">{formatDate(member.joined_at)}</p>
+                <p className="text-xs text-muted-foreground">Joined</p>
+                <p className="font-medium text-sm">{formatDate(member.joined_at)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-muted-foreground" />
+              <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.08)" }}>
+                <User className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Roles</p>
-                <p className="font-medium capitalize">{member.roles.join(", ")}</p>
+                <p className="text-xs text-muted-foreground">Roles</p>
+                <p className="font-medium text-sm capitalize">{member.roles.join(", ")}</p>
               </div>
             </div>
           </div>
@@ -399,9 +418,14 @@ export default function MemberDetailPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Membership</CardTitle>
-                <CardDescription>Current membership plan and status</CardDescription>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.1)" }}>
+                  <CreditCard className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+                </div>
+                <div>
+                  <CardTitle>Membership</CardTitle>
+                  <CardDescription>Current membership plan and status</CardDescription>
+                </div>
               </div>
               <MembershipHistoryDialog userId={userId} />
             </div>
@@ -465,38 +489,50 @@ export default function MemberDetailPage() {
       )}
 
       {/* Activity Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Summary</CardTitle>
-          <CardDescription>Gym participant activity and engagement</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center gap-3">
-              <Activity className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Check-ins</p>
-                <p className="text-2xl font-bold">{member.total_check_ins}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Check-ins */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-green" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-muted-foreground">Total Check-ins</p>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(16, 185, 129, 0.1)" }}>
+                <Activity className="h-4 w-4" style={{ color: "#10b981" }} />
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <CreditCard className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Payments</p>
-                <p className="text-2xl font-bold">{member.total_payments}</p>
-              </div>
-            </div>
+            <p className="text-3xl font-bold" style={{ color: "#10b981" }}>{member.total_check_ins}</p>
+            <p className="text-xs text-muted-foreground mt-1">Gym visits recorded</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Payments */}
+        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-1 stat-bar-purple" />
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm text-muted-foreground">Total Payments</p>
+              <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.1)" }}>
+                <CreditCard className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold" style={{ color: "#8b5cf6" }}>{member.total_payments}</p>
+            <p className="text-xs text-muted-foreground mt-1">Transactions recorded</p>
+          </div>
+        </div>
+      </div>
 
       {/* Health Records */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Health & Safety Records</CardTitle>
-              <CardDescription>Medical information and emergency contacts</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg" style={{ background: "rgba(239, 68, 68, 0.1)" }}>
+                <Heart className="h-4 w-4" style={{ color: "#ef4444" }} />
+              </div>
+              <div>
+                <CardTitle>Health & Safety Records</CardTitle>
+                <CardDescription>Medical information and emergency contacts</CardDescription>
+              </div>
             </div>
             {!isEditingHealth && (
               <Button variant="outline" size="sm" onClick={handleEditHealth} disabled={isHealthLoading}>

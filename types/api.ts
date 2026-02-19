@@ -327,23 +327,59 @@ export interface MembershipPlanUpdateRequest {
 }
 
 // Reports Types
+export interface ExpiringMember {
+  user_id: string;
+  participant_id: string;
+  name: string;
+  plan_name: string | null;
+  end_date: string; // YYYY-MM-DD
+}
+
+export interface AtRiskMember {
+  participant_id: string;
+  name: string;
+  plan_name: string | null;
+  last_check_in: string | null; // YYYY-MM-DD, null = never checked in
+  days_since_check_in: number;  // -1 = never checked in
+}
+
 export interface DashboardResponse {
-  // Member counts (participant access status)
-  total_members_count: number;
-  active_members_count: number;
-  suspended_members_count: number;
+  // Unique people in the gym (each person counted once regardless of roles)
+  total_unique_participants: number;
+
+  // All gym participants, broken down by role (e.g. { member: 6, staff: 1, trainer: 1 })
+  participants_by_role: Record<string, number>;
 
   // Membership subscription status counts
   active_memberships_count: number;
   expired_memberships_count: number;
   cancelled_memberships_count: number;
 
+  // Active members last month (for retention delta)
+  active_last_month_count: number;
+
   // Activity
   check_ins_today: number;
+  check_ins_yesterday: number;
   checked_in_now: number;
+  revenue_today: number;
   expiring_memberships_7d: number;
-  new_members_this_month: number;
+
+  // Top members expiring soon (mini drill-down table)
+  expiring_soon_members: ExpiringMember[];
+
+  // Members not checked in for 10+ days with active membership
+  at_risk_members: AtRiskMember[];
+
+  // Leads created today
+  leads_today_count: number;
+
+  // New vs renewals this month
+  new_members_this_month: number;   // first-time members (joined_at this month)
+  renewals_this_month: number;      // existing members who started a new plan this month
+
   revenue_this_month: number;
+  revenue_last_month: number; // for % change indicator
 }
 
 // Attendance Report Types
