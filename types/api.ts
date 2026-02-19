@@ -741,6 +741,75 @@ export interface GymTrainerListParams {
   per_page?: number;
 }
 
+// Payment Types
+export interface PaymentResponse {
+  id: string;
+  gym_id: string;
+  participant_id: string;
+  membership_id: string | null;
+  amount: string;
+  currency: string;
+  payment_method: PaymentMethod;
+  transaction_reference: string | null;
+  status: PaymentStatus;
+  receipt_number: string;
+  notes: string | null;
+  recorded_by_id: string;
+  refunded_at: string | null;
+  payment_metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentListResponse {
+  items: PaymentResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface PaymentCreateRequest {
+  participant_id: string;
+  membership_id?: string | null;
+  amount: number;
+  currency?: string;
+  payment_method: PaymentMethod;
+  transaction_reference?: string | null;
+  notes?: string | null;
+}
+
+export interface PaymentRefundRequest {
+  notes?: string | null;
+}
+
+export interface PaymentReceiptResponse {
+  id: string;
+  receipt_number: string;
+  gym_id: string;
+  participant_id: string;
+  membership_id: string | null;
+  amount: string;
+  currency: string;
+  payment_method: string;
+  transaction_reference: string | null;
+  status: string;
+  notes: string | null;
+  recorded_by_id: string;
+  created_at: string;
+}
+
+export interface PaymentListParams {
+  participant_id?: string;
+  membership_id?: string;
+  payment_method?: PaymentMethod;
+  status?: PaymentStatus;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}
+
 // API Error Types
 export interface APIError {
   detail: string;
