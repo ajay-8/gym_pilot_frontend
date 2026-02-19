@@ -182,7 +182,11 @@ export default function MemberDetailPage() {
   const handleEditHealth = () => {
     if (healthRecords) {
       setHealthForm({
-        emergency_contact: healthRecords.emergency_contact || { name: "", relationship: "", phone: "" },
+        emergency_contact: {
+          name: healthRecords.emergency_contact?.name ?? "",
+          relationship: healthRecords.emergency_contact?.relationship ?? "",
+          phone: healthRecords.emergency_contact?.phone ?? "",
+        },
         fitness_goals: healthRecords.fitness_goals || [],
         injuries_limitations: healthRecords.injuries_limitations || "",
         medical_conditions: healthRecords.medical_conditions || [],

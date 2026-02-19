@@ -531,6 +531,106 @@ export interface MemberAnalyticsResponse {
   monthly_growth: MonthlyMemberGrowth[];
 }
 
+// Lead Types
+export type LeadStatus =
+  | "new"
+  | "contacted"
+  | "scheduled_tour"
+  | "tour_completed"
+  | "trial_started"
+  | "converted"
+  | "lost";
+
+export type LeadSource =
+  | "walk_in"
+  | "phone_inquiry"
+  | "web_form"
+  | "referral"
+  | "social_media"
+  | "advertisement"
+  | "other";
+
+export interface LeadNoteEntry {
+  timestamp: string;
+  author_id: string | null;
+  note: string;
+}
+
+export interface LeadResponse {
+  id: string;
+  gym_id: string;
+  first_name: string;
+  last_name: string | null;
+  email: string | null;
+  phone: string;
+  source: LeadSource;
+  status: LeadStatus;
+  interested_in: Record<string, any>;
+  fitness_goals: string | null;
+  assigned_to_id: string | null;
+  next_follow_up_date: string | null;
+  last_contact_date: string | null;
+  converted_participant_id: string | null;
+  converted_at: string | null;
+  lost_at: string | null;
+  lost_reason: string | null;
+  lost_reason_details: string | null;
+  notes: { entries: LeadNoteEntry[] };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadListResponse {
+  leads: LeadResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface LeadCreateRequest {
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  phone: string;
+  source: LeadSource;
+  interested_in?: Record<string, any>;
+  fitness_goals?: string;
+  next_follow_up_date?: string;
+}
+
+export interface LeadUpdateRequest {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  source?: LeadSource;
+  status?: LeadStatus;
+  fitness_goals?: string;
+  next_follow_up_date?: string;
+  last_contact_date?: string;
+}
+
+export interface LeadNoteAddRequest {
+  note: string;
+}
+
+export interface LeadMarkLostRequest {
+  lost_reason: string;
+  lost_reason_details?: string;
+}
+
+export interface LeadConvertRequest {
+  participant_id: string;
+}
+
+export interface LeadListParams {
+  status?: string;
+  source?: string;
+  page?: number;
+  per_page?: number;
+}
+
 // API Error Types
 export interface APIError {
   detail: string;

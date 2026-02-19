@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
+import type { ParticipantRole } from "@/types/api";
 import { useEffect } from "react";
 
 const navigation = [
@@ -73,7 +74,7 @@ export default function DashboardLayout({
 
   const userRoles = gymContext?.roles || [];
   const filteredNavigation = navigation.filter((item) =>
-    item.roles.some((role) => userRoles.includes(role))
+    item.roles.some((role) => userRoles.includes(role as ParticipantRole))
   );
 
   const handleLogout = async () => {
