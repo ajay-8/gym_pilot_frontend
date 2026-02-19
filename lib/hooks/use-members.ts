@@ -4,6 +4,7 @@ import {
   BulkMemberImportRequest,
   MemberOnboardRequest,
   MemberStatusUpdateRequest,
+  MemberUpdateRequest,
   MembershipRenewRequest,
   MemberHealthRecordsUpdateRequest,
   MemberListParams,

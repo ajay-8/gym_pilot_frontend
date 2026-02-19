@@ -43,7 +43,7 @@ const formSchema = z.object({
   description: z.string().max(1000).optional(),
   duration_days: z.string().optional(),
   price: z.string().min(1, "Price is required"),
-  currency: z.string().default("INR"),
+  currency: z.string().min(1),
 });
 
 type FormData = z.infer<typeof formSchema>;
