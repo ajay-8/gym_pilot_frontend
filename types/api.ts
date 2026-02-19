@@ -631,6 +631,116 @@ export interface LeadListParams {
   per_page?: number;
 }
 
+// Check-in Types
+export interface CheckInResponse {
+  id: string;
+  participant_id: string;
+  gym_id: string;
+  checked_in_at: string;
+  checked_out_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CheckInListResponse {
+  items: CheckInResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CheckInCreateRequest {
+  participant_id: string;
+  notes?: string;
+}
+
+export interface CheckInListParams {
+  participant_id?: string;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+// Trainer Types
+export interface GymTrainerResponse {
+  id: string;
+  gym_id: string;
+  participant_id: string;
+  trainer_name: string | null;
+  hourly_rate: string | null;
+  commission_rate: string | null;
+  currency: string;
+  weekly_availability: Record<string, { start: string; end: string }[]>;
+  max_sessions_per_day: number | null;
+  status: string; // "active" | "inactive"
+  onboarding_date: string;
+  offboarding_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GymTrainerListResponse {
+  trainers: GymTrainerResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface GymTrainerCreateRequest {
+  participant_id: string;
+  hourly_rate?: number;
+  commission_rate?: number;
+  currency?: string;
+  max_sessions_per_day?: number;
+  onboarding_date: string;
+}
+
+export interface GymTrainerUpdateRequest {
+  hourly_rate?: number | null;
+  commission_rate?: number | null;
+  max_sessions_per_day?: number | null;
+  status?: string;
+}
+
+export interface TrainerPerformanceResponse {
+  gym_trainer_id: string;
+  total_sessions: number;
+  completed_sessions: number;
+  cancelled_sessions: number;
+  no_show_sessions: number;
+  completion_rate: string;
+  total_revenue: string;
+  total_commission_earned: string;
+  average_session_duration_minutes: number | null;
+  active_clients: number;
+}
+
+export interface CommissionSummaryItem {
+  period: string; // "YYYY-MM"
+  total_sessions: number;
+  total_base_amount: string;
+  total_commission: string;
+  pending_count: number;
+  paid_count: number;
+}
+
+export interface CommissionSummaryResponse {
+  gym_trainer_id: string;
+  total_earnings: string;
+  total_pending: string;
+  total_paid: string;
+  by_period: CommissionSummaryItem[];
+}
+
+export interface GymTrainerListParams {
+  status?: string;
+  page?: number;
+  per_page?: number;
+}
+
 // API Error Types
 export interface APIError {
   detail: string;
