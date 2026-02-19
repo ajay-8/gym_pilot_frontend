@@ -833,3 +833,128 @@ export interface MemberListParams extends PaginationParams {
 export interface MessageResponse {
   message: string;
 }
+
+// ── Classes Types ─────────────────────────────────────────────────────────────
+
+export type ClassSessionStatus = "scheduled" | "completed" | "cancelled";
+export type BookingStatus = "confirmed" | "waitlisted" | "cancelled" | "attended" | "no_show";
+
+export interface GymClassResponse {
+  id: string;
+  gym_id: string;
+  name: string;
+  description: string | null;
+  default_duration_minutes: number;
+  default_capacity: number;
+  class_metadata: Record<string, unknown> | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GymClassListResponse {
+  items: GymClassResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GymClassCreateRequest {
+  name: string;
+  description?: string | null;
+  default_duration_minutes?: number;
+  default_capacity?: number;
+  class_metadata?: Record<string, unknown> | null;
+}
+
+export interface GymClassUpdateRequest {
+  name?: string;
+  description?: string | null;
+  default_duration_minutes?: number;
+  default_capacity?: number;
+  class_metadata?: Record<string, unknown> | null;
+  status?: string;
+}
+
+export interface ClassSessionResponse {
+  id: string;
+  gym_id: string;
+  class_id: string;
+  trainer_id: string;
+  recurring_schedule_id: string | null;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  current_bookings: number;
+  notes: string | null;
+  status: ClassSessionStatus;
+  created_at: string;
+  gym_class: GymClassResponse | null;
+}
+
+export interface ClassSessionListResponse {
+  items: ClassSessionResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ClassSessionCreateRequest {
+  class_id: string;
+  trainer_id: string;
+  start_time: string;
+  end_time: string;
+  capacity?: number;
+  notes?: string | null;
+}
+
+export interface ClassSessionUpdateRequest {
+  trainer_id?: string;
+  start_time?: string;
+  end_time?: string;
+  capacity?: number;
+  notes?: string | null;
+}
+
+export interface ClassSessionCancelRequest {
+  reason?: string | null;
+}
+
+export interface BookingResponse {
+  id: string;
+  session_id: string;
+  participant_id: string;
+  status: BookingStatus;
+  booked_at: string;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  created_at: string;
+  session: ClassSessionResponse | null;
+  waitlist_position: number | null;
+}
+
+export interface BookingListResponse {
+  items: BookingResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ClassSessionListParams {
+  class_id?: string;
+  trainer_id?: string;
+  date_from?: string;
+  date_to?: string;
+  status?: ClassSessionStatus;
+  page?: number;
+  page_size?: number;
+}
+
+export interface GymClassListParams {
+  include_inactive?: boolean;
+  page?: number;
+  page_size?: number;
+}
