@@ -14,6 +14,7 @@ import {
   Building2,
   ChevronRight,
   ScanLine,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,7 @@ const navigation = [
   { name: "Memberships", href: "/dashboard/memberships", icon: CreditCard, roles: ["owner", "admin", "staff"] },
   { name: "Classes", href: "/dashboard/classes", icon: Calendar, roles: ["owner", "admin", "staff", "trainer"] },
   { name: "Trainers", href: "/dashboard/trainers", icon: Dumbbell, roles: ["owner", "admin"] },
+  { name: "Payments", href: "/dashboard/payments", icon: Banknote, roles: ["owner", "admin", "staff"] },
   { name: "Leads", href: "/dashboard/leads", icon: UserPlus, roles: ["owner", "admin", "staff"] },
   { name: "Reports", href: "/dashboard/reports", icon: BarChart3, roles: ["owner", "admin"] },
 ];
