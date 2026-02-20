@@ -13,6 +13,7 @@ import {
   LogOut,
   Building2,
   ChevronRight,
+  ChevronDown,
   ScanLine,
   Banknote,
   UserCog,
@@ -38,18 +39,32 @@ import { useEffect, useState } from "react";
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
-const navigation = [
-  { name: "Dashboard",    href: "/dashboard",               icon: Home,     roles: ["owner", "admin", "staff", "trainer", "member"] },
-  { name: "Members",      href: "/dashboard/members",        icon: Users,    roles: ["owner", "admin", "staff"] },
-  { name: "Check-ins",    href: "/dashboard/check-ins",      icon: ScanLine, roles: ["owner", "admin", "staff"] },
-  { name: "Memberships",  href: "/dashboard/memberships",    icon: CreditCard, roles: ["owner", "admin", "staff"] },
-  { name: "Classes",      href: "/dashboard/classes",        icon: Calendar, roles: ["owner", "admin", "staff", "trainer"] },
-  { name: "Trainers",          href: "/dashboard/trainers",           icon: Dumbbell,  roles: ["owner", "admin"] },
-  { name: "Staff",             href: "/dashboard/staff",              icon: UserCog,   roles: ["owner", "admin"] },
-  { name: "Payments",     href: "/dashboard/payments",       icon: Banknote, roles: ["owner", "admin", "staff"] },
-  { name: "Leads",        href: "/dashboard/leads",          icon: UserPlus, roles: ["owner", "admin", "staff"] },
-  { name: "Reports",      href: "/dashboard/reports",        icon: BarChart3, roles: ["owner", "admin"] },
-  { name: "Settings",     href: "/dashboard/settings",       icon: Settings, roles: ["owner", "admin"] },
+type NavChild = { name: string; href: string; icon: React.ElementType; roles: string[] };
+type NavGroup = { name: string; icon: React.ElementType; roles: string[]; children: NavChild[] };
+type NavFlat  = { name: string; href: string; icon: React.ElementType; roles: string[] };
+type NavEntry = NavFlat | NavGroup;
+
+function isGroup(item: NavEntry): item is NavGroup {
+  return "children" in item;
+}
+
+const navigation: NavEntry[] = [
+  { name: "Dashboard",       href: "/dashboard",            icon: Home,      roles: ["owner", "admin", "staff", "trainer", "member"] },
+  {
+    name: "Gym Participants", icon: Users, roles: ["owner", "admin", "staff"],
+    children: [
+      { name: "Members",  href: "/dashboard/members",  icon: Users,   roles: ["owner", "admin", "staff"] },
+      { name: "Trainers", href: "/dashboard/trainers", icon: Dumbbell, roles: ["owner", "admin"] },
+      { name: "Staff",    href: "/dashboard/staff",    icon: UserCog, roles: ["owner", "admin"] },
+    ],
+  },
+  { name: "Check-ins",       href: "/dashboard/check-ins",  icon: ScanLine,  roles: ["owner", "admin", "staff"] },
+  { name: "Memberships",     href: "/dashboard/memberships", icon: CreditCard, roles: ["owner", "admin", "staff"] },
+  { name: "Classes",         href: "/dashboard/classes",     icon: Calendar,  roles: ["owner", "admin", "staff", "trainer"] },
+  { name: "Payments",        href: "/dashboard/payments",    icon: Banknote,  roles: ["owner", "admin", "staff"] },
+  { name: "Leads",           href: "/dashboard/leads",       icon: UserPlus,  roles: ["owner", "admin", "staff"] },
+  { name: "Reports",         href: "/dashboard/reports",     icon: BarChart3, roles: ["owner", "admin"] },
+  { name: "Settings",        href: "/dashboard/settings",    icon: Settings,  roles: ["owner", "admin"] },
 ];
 
 // ── Notification type → icon + color ─────────────────────────────────────────
@@ -225,6 +240,9 @@ export default function DashboardLayout({
   const { user, gymContext, isAuthenticated, hasHydrated } = useAuth();
   const logout = useLogout();
 
+  // All hooks must be declared before any early returns
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) router.push("/login");
   }, [hasHydrated, isAuthenticated, router]);
@@ -232,6 +250,16 @@ export default function DashboardLayout({
   useEffect(() => {
     if (hasHydrated && isAuthenticated && !gymContext) router.push("/select-gym");
   }, [hasHydrated, isAuthenticated, gymContext, router]);
+
+  // Auto-expand group when navigating to a child page
+  useEffect(() => {
+    for (const item of navigation) {
+      if (isGroup(item) && item.children.some((c) => pathname.startsWith(c.href))) {
+        setOpenGroup(item.name);
+        return;
+      }
+    }
+  }, [pathname]);
 
   if (!hasHydrated || !isAuthenticated || !gymContext) {
     return (
@@ -246,7 +274,9 @@ export default function DashboardLayout({
 
   const userRoles = gymContext?.roles || [];
   const filteredNavigation = navigation.filter((item) =>
-    item.roles.some((role) => userRoles.includes(role as ParticipantRole))
+    isGroup(item)
+      ? item.children.some((c) => c.roles.some((r) => userRoles.includes(r as ParticipantRole)))
+      : item.roles.some((role) => userRoles.includes(role as ParticipantRole))
   );
 
   const handleLogout = async () => { await logout.mutateAsync(); };
@@ -255,9 +285,19 @@ export default function DashboardLayout({
     "/dashboard/profile": "Profile",
     "/dashboard/notifications": "Notifications",
   };
-  const currentPage =
-    navigation.find((item) => item.href === pathname) ??
-    (extraPages[pathname] ? { name: extraPages[pathname] } : null);
+
+  // Find current page name — check flat items and group children
+  const currentPage = (() => {
+    for (const item of navigation) {
+      if (isGroup(item)) {
+        const child = item.children.find((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+        if (child) return child;
+      } else if (item.href === pathname) {
+        return item;
+      }
+    }
+    return extraPages[pathname] ? { name: extraPages[pathname] } : null;
+  })();
 
   const userInitial = user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || "U";
 
@@ -312,17 +352,60 @@ export default function DashboardLayout({
             Menu
           </p>
           {filteredNavigation.map((item) => {
+            if (isGroup(item)) {
+              const isOpen = openGroup === item.name;
+              const hasActiveChild = item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+              const visibleChildren = item.children.filter((c) =>
+                c.roles.some((r) => userRoles.includes(r as ParticipantRole))
+              );
+              return (
+                <div key={item.name}>
+                  <button
+                    onClick={() => setOpenGroup(isOpen ? null : item.name)}
+                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                      hasActiveChild ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" style={hasActiveChild ? { color: "#10b981" } : undefined} />
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      style={hasActiveChild ? { color: "#10b981" } : undefined}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{ borderLeft: "1px solid hsl(var(--border))" }}>
+                      {visibleChildren.map((child) => {
+                        const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                        return (
+                          <Link
+                            key={child.name}
+                            href={child.href}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                              isChildActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            }`}
+                          >
+                            <child.icon className="h-3.5 w-3.5 flex-shrink-0" style={isChildActive ? { color: "#10b981" } : undefined} />
+                            <span className="flex-1">{child.name}</span>
+                            {isChildActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
             const isActive = pathname === item.href;
-            const Icon = item.icon;
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 group ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                   isActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }`}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" style={isActive ? { color: "#10b981" } : undefined} />
+                <item.icon className="h-4 w-4 flex-shrink-0" style={isActive ? { color: "#10b981" } : undefined} />
                 <span className="flex-1">{item.name}</span>
                 {isActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
               </Link>
@@ -397,14 +480,27 @@ export default function DashboardLayout({
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>{gymContext.gym_name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {filteredNavigation.map((item) => (
-                  <DropdownMenuItem key={item.name} asChild>
-                    <Link href={item.href}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {item.name}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
+                {filteredNavigation.map((item) =>
+                  isGroup(item) ? (
+                    item.children
+                      .filter((c) => c.roles.some((r) => userRoles.includes(r as ParticipantRole)))
+                      .map((child) => (
+                        <DropdownMenuItem key={child.name} asChild>
+                          <Link href={child.href}>
+                            <child.icon className="mr-2 h-4 w-4" />
+                            {child.name}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))
+                  ) : (
+                    <DropdownMenuItem key={item.name} asChild>
+                      <Link href={item.href}>
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {item.name}
+                      </Link>
+                    </DropdownMenuItem>
+                  )
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />

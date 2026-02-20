@@ -17,8 +17,10 @@ import {
   Building2,
   ArrowDownLeft,
   Plus,
+  Download,
 } from "lucide-react";
 import { usePayments, usePaymentCreate, usePaymentRefund } from "@/lib/hooks/use-payments";
+import { exportPaymentsToCSV } from "@/lib/utils/csv-export";
 import { useMembers } from "@/lib/hooks/use-members";
 import type {
   PaymentResponse,
@@ -616,14 +618,24 @@ export default function PaymentsPage() {
             {total > 0 ? `${total} transactions` : "No transactions yet"}
           </p>
         </div>
-        <button
-          onClick={() => setShowRecordDialog(true)}
-          className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Record Payment
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportPaymentsToCSV(payments)}
+            disabled={payments.length === 0}
+            className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-sm font-semibold border border-border text-muted-foreground transition-all hover:text-foreground hover:border-foreground/30 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+          <button
+            onClick={() => setShowRecordDialog(true)}
+            className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+            style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Record Payment
+          </button>
+        </div>
       </div>
 
       {/* ── Stat Cards ───────────────────────────────────────────────────── */}

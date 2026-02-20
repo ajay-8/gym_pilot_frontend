@@ -84,6 +84,26 @@ export function exportToCSV(data: any[], options: CSVExportOptions = {}): void {
 }
 
 /**
+ * Export payments to CSV
+ */
+export function exportPaymentsToCSV(payments: any[]): void {
+  const csvData = payments.map((p) => ({
+    "Receipt No": p.receipt_number || "",
+    "Member ID": p.participant_id || "",
+    "Amount (₹)": p.amount || "",
+    Method: p.payment_method || "",
+    Status: p.status || "",
+    Date: p.payment_date ? p.payment_date.slice(0, 10) : "",
+    Notes: p.notes || "",
+  }));
+
+  const timestamp = new Date().toISOString().split("T")[0];
+  exportToCSV(csvData, {
+    filename: `payments-export-${timestamp}.csv`,
+  });
+}
+
+/**
  * Export members to CSV
  */
 export function exportMembersToCSV(members: any[]): void {

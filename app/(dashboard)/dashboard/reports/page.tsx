@@ -51,13 +51,13 @@ const reports = [
   {
     title: "Lead Analytics",
     description: "Conversion metrics and source breakdown",
-    href: "#",
+    href: "/dashboard/reports/lead-analytics",
     icon: BarChart3,
     bar: "stat-bar-blue",
     iconBg: "rgba(99, 102, 241, 0.12)",
     iconColor: "#6366f1",
     dot: "#6366f1",
-    disabled: true,
+    disabled: false,
   },
 ];
 

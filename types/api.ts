@@ -786,6 +786,42 @@ export interface CommissionSummaryResponse {
   by_period: CommissionSummaryItem[];
 }
 
+export interface CommissionResponse {
+  id: string;
+  gym_trainer_id: string;
+  base_amount: string;
+  commission_rate: string;
+  commission_amount: string;
+  currency: string;
+  commission_period: string; // "YYYY-MM-DD" (first of month)
+  status: "pending" | "paid" | "cancelled";
+  paid_at: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CommissionListResponse {
+  commissions: CommissionResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface MarkCommissionPaidRequest {
+  payment_reference?: string;
+  notes?: string;
+}
+
+export interface CommissionListParams {
+  status?: "pending" | "paid" | "cancelled";
+  period_from?: string;
+  period_to?: string;
+  page?: number;
+  per_page?: number;
+}
+
 export interface GymTrainerListParams {
   status?: string;
   page?: number;

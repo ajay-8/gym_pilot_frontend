@@ -22,11 +22,14 @@ import {
   useTrainerOffboard,
   useTrainerPerformance,
   useTrainerCommissionSummary,
+  useTrainerCommissions,
+  useMarkCommissionPaid,
 } from "@/lib/hooks/use-trainers";
 import type {
   GymTrainerResponse,
   TrainerPerformanceResponse,
   CommissionSummaryResponse,
+  CommissionSummaryItem,
 } from "@/types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -184,11 +187,152 @@ function PerformanceSection({ performance }: { performance: TrainerPerformanceRe
   );
 }
 
+// ── Mark Paid Dialog ──────────────────────────────────────────────────────────
+
+function MarkPaidDialog({
+  trainerId,
+  period,
+  onClose,
+}: {
+  trainerId: string;
+  period: CommissionSummaryItem;
+  onClose: () => void;
+}) {
+  const [paymentRef, setPaymentRef] = useState("");
+  const [notes, setNotes] = useState("");
+
+  // Period format in summary is "YYYY-MM", API needs "YYYY-MM-DD"
+  const periodFrom = period.period.length === 7 ? `${period.period}-01` : period.period;
+
+  const { data: commissionsData, isLoading: loadingCommissions } = useTrainerCommissions(trainerId, {
+    status: "pending",
+    period_from: periodFrom,
+    period_to: periodFrom,
+    per_page: 100,
+  });
+
+  const markPaid = useMarkCommissionPaid();
+
+  const handleSubmit = async () => {
+    const commissions = commissionsData?.commissions ?? [];
+    for (const commission of commissions) {
+      await markPaid.mutateAsync({
+        commissionId: commission.id,
+        payload: {
+          payment_reference: paymentRef.trim() || undefined,
+          notes: notes.trim() || undefined,
+        },
+      });
+    }
+    onClose();
+  };
+
+  const isPending = markPaid.isPending;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.5)" }}
+    >
+      <div
+        className="rounded-2xl p-6 w-full max-w-sm mx-4"
+        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="font-bold text-foreground">Mark Commissions Paid</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Period: {period.period}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:opacity-70">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Summary */}
+        <div
+          className="rounded-xl p-3 mb-4 grid grid-cols-2 gap-2"
+          style={{ background: "hsl(var(--muted)/0.3)" }}
+        >
+          <div>
+            <p className="text-[10px] text-muted-foreground">Pending Sessions</p>
+            <p className="text-sm font-bold text-foreground">{period.pending_count}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Amount</p>
+            <p className="text-sm font-bold" style={{ color: "#8b5cf6" }}>
+              {fmtCurrency(period.total_commission)}
+            </p>
+          </div>
+        </div>
+
+        {loadingCommissions ? (
+          <p className="text-center text-xs text-muted-foreground py-4">Loading commissions…</p>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                Payment Reference <span className="font-normal">(optional)</span>
+              </label>
+              <input
+                value={paymentRef}
+                onChange={(e) => setPaymentRef(e.target.value)}
+                placeholder="e.g. UPI-123456, NEFT ref"
+                className="w-full rounded-xl px-3 py-2 text-sm bg-transparent outline-none"
+                style={{ border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" }}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                Notes <span className="font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Any remarks…"
+                className="w-full rounded-xl px-3 py-2 text-sm bg-transparent outline-none resize-none"
+                style={{ border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: "hsl(var(--muted)/0.4)", color: "hsl(var(--muted-foreground))" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isPending || loadingCommissions || !commissionsData?.commissions?.length}
+            className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ background: "#8b5cf6" }}
+          >
+            {isPending ? "Processing…" : `Mark ${period.pending_count} Paid`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Commission Summary Section ─────────────────────────────────────────────────
 
-function CommissionSection({ summary }: { summary: CommissionSummaryResponse }) {
+function CommissionSection({ summary, trainerId }: { summary: CommissionSummaryResponse; trainerId: string }) {
+  const [payPeriod, setPayPeriod] = useState<CommissionSummaryItem | null>(null);
+
   return (
     <div className="space-y-2">
+      {payPeriod && (
+        <MarkPaidDialog
+          trainerId={trainerId}
+          period={payPeriod}
+          onClose={() => setPayPeriod(null)}
+        />
+      )}
       <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
         Commissions
       </p>
@@ -216,30 +360,36 @@ function CommissionSection({ summary }: { summary: CommissionSummaryResponse }) 
           style={{ border: "1px solid hsl(var(--border)/0.5)" }}
         >
           <div
-            className="grid grid-cols-4 px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase"
-            style={{ borderBottom: "1px solid hsl(var(--border)/0.5)" }}
+            className="grid px-3 py-1.5 text-[10px] font-bold text-muted-foreground uppercase"
+            style={{ borderBottom: "1px solid hsl(var(--border)/0.5)", gridTemplateColumns: "1fr auto auto auto" }}
           >
             <span>Period</span>
-            <span className="text-right">Sessions</span>
-            <span className="text-right">Amount</span>
+            <span className="text-right mr-3">Sessions</span>
+            <span className="text-right mr-3">Amount</span>
             <span className="text-right">Status</span>
           </div>
           {summary.by_period.slice(0, 6).map((p) => (
             <div
               key={p.period}
-              className="grid grid-cols-4 px-3 py-2 text-[11px]"
-              style={{ borderBottom: "1px solid hsl(var(--border)/0.3)" }}
+              className="grid items-center px-3 py-2 text-[11px]"
+              style={{ borderBottom: "1px solid hsl(var(--border)/0.3)", gridTemplateColumns: "1fr auto auto auto" }}
             >
               <span className="text-muted-foreground">{p.period}</span>
-              <span className="text-right text-foreground">{p.total_sessions}</span>
-              <span className="text-right font-semibold text-foreground">
+              <span className="text-right mr-3 text-foreground">{p.total_sessions}</span>
+              <span className="text-right mr-3 font-semibold text-foreground">
                 {fmtCurrency(p.total_commission)}
               </span>
-              <span className="text-right text-[10px]">
+              <span className="text-right">
                 {p.pending_count > 0 ? (
-                  <span style={{ color: "#f59e0b" }}>{p.pending_count} pending</span>
+                  <button
+                    onClick={() => setPayPeriod(p)}
+                    className="px-2 py-0.5 rounded-lg text-[10px] font-bold"
+                    style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}
+                  >
+                    Pay ({p.pending_count})
+                  </button>
                 ) : (
-                  <span style={{ color: "#10b981" }}>Paid</span>
+                  <span className="text-[10px]" style={{ color: "#10b981" }}>Paid</span>
                 )}
               </span>
             </div>
@@ -362,7 +512,7 @@ function DetailPanel({ trainer, onClose, onStatusToggle, isToggling, onOffboard,
             Loading commissions…
           </div>
         ) : commSummary ? (
-          <CommissionSection summary={commSummary} />
+          <CommissionSection summary={commSummary} trainerId={trainer.id} />
         ) : (
           <div className="py-4 text-center text-xs text-muted-foreground">
             No commission data yet
