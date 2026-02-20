@@ -1009,3 +1009,56 @@ export interface GymClassListParams {
   page?: number;
   page_size?: number;
 }
+
+// ── Gym Settings ─────────────────────────────────────────────────────────────
+
+export interface GymUpdateRequest {
+  name?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: number;
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | "new_member"
+  | "membership_expiring"
+  | "membership_expired"
+  | "payment_received"
+  | "payment_overdue"
+  | "class_booking"
+  | "check_in"
+  | "general";
+
+export interface NotificationResponse {
+  id: string;
+  gym_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  is_read: boolean;
+  metadata_: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  unread_count: number;
+}
+
+export interface UnreadCountResponse {
+  unread_count: number;
+}
+
+export interface NotificationListParams {
+  page?: number;
+  page_size?: number;
+  unread_only?: boolean;
+}
