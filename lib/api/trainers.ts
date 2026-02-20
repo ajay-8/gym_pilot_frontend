@@ -7,6 +7,10 @@ import type {
   GymTrainerListParams,
   TrainerPerformanceResponse,
   CommissionSummaryResponse,
+  CommissionListResponse,
+  CommissionResponse,
+  CommissionListParams,
+  MarkCommissionPaidRequest,
 } from "@/types/api";
 
 export const trainersApi = {
@@ -46,6 +50,22 @@ export const trainersApi = {
     apiClient
       .get<CommissionSummaryResponse>(
         `/trainers/gyms/${gymId}/trainers/${trainerId}/commissions/summary`
+      )
+      .then((r) => r.data),
+
+  getCommissions: (gymId: string, trainerId: string, params: CommissionListParams = {}) =>
+    apiClient
+      .get<CommissionListResponse>(
+        `/trainers/gyms/${gymId}/trainers/${trainerId}/commissions`,
+        { params }
+      )
+      .then((r) => r.data),
+
+  markCommissionPaid: (gymId: string, commissionId: string, payload: MarkCommissionPaidRequest = {}) =>
+    apiClient
+      .post<CommissionResponse>(
+        `/trainers/gyms/${gymId}/commissions/${commissionId}/mark-paid`,
+        payload
       )
       .then((r) => r.data),
 };

@@ -4,6 +4,8 @@ import type {
   GymTrainerCreateRequest,
   GymTrainerUpdateRequest,
   GymTrainerListParams,
+  CommissionListParams,
+  MarkCommissionPaidRequest,
 } from "@/types/api";
 import { useAuth } from "./use-auth";
 
@@ -18,6 +20,8 @@ export const trainerKeys = {
     [...trainerKeys.all, "performance", gymId, trainerId] as const,
   commissionSummary: (gymId: string | undefined, trainerId: string) =>
     [...trainerKeys.all, "commission-summary", gymId, trainerId] as const,
+  commissions: (gymId: string | undefined, trainerId: string, params: CommissionListParams) =>
+    [...trainerKeys.all, "commissions", gymId, trainerId, params] as const,
 };
 
 export function useTrainers(params: GymTrainerListParams = {}) {
@@ -50,6 +54,31 @@ export function useTrainerCommissionSummary(trainerId: string | null) {
     queryKey: trainerKeys.commissionSummary(gymId, trainerId ?? ""),
     queryFn: () => trainersApi.getCommissionSummary(gymId!, trainerId!),
     enabled: !!gymId && !!trainerId,
+  });
+}
+
+export function useTrainerCommissions(trainerId: string | null, params: CommissionListParams = {}) {
+  const { gymContext } = useAuth();
+  const gymId = gymContext?.gym_id;
+
+  return useQuery({
+    queryKey: trainerKeys.commissions(gymId, trainerId ?? "", params),
+    queryFn: () => trainersApi.getCommissions(gymId!, trainerId!, params),
+    enabled: !!gymId && !!trainerId,
+  });
+}
+
+export function useMarkCommissionPaid() {
+  const queryClient = useQueryClient();
+  const { gymContext } = useAuth();
+  const gymId = gymContext?.gym_id;
+
+  return useMutation({
+    mutationFn: ({ commissionId, payload }: { commissionId: string; payload: MarkCommissionPaidRequest }) =>
+      trainersApi.markCommissionPaid(gymId!, commissionId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trainerKeys.all });
+    },
   });
 }
 
