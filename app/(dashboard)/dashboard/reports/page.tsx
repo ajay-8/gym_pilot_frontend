@@ -40,13 +40,13 @@ const reports = [
   {
     title: "Member Analytics",
     description: "Growth metrics and membership type distribution",
-    href: "#",
+    href: "/dashboard/reports/member-analytics",
     icon: TrendingUp,
     bar: "stat-bar-amber",
     iconBg: "rgba(245, 158, 11, 0.12)",
     iconColor: "#f59e0b",
     dot: "#f59e0b",
-    disabled: true,
+    disabled: false,
   },
   {
     title: "Lead Analytics",

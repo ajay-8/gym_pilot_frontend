@@ -1062,3 +1062,34 @@ export interface NotificationListParams {
   page_size?: number;
   unread_only?: boolean;
 }
+
+// ── Amenities ─────────────────────────────────────────────────────────────────
+
+export interface AmenityResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmenityListResponse {
+  items: AmenityResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GymAmenityAddRequest {
+  amenity_id: string;
+}
+
+export interface GymAmenityResponse {
+  id: string;
+  gym_id: string;
+  amenity_id: string;
+  created_at: string;
+}

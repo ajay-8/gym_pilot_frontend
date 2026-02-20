@@ -12,8 +12,11 @@ import {
   Calendar,
   Globe,
   Hash,
+  Sparkles,
+  Plus,
 } from "lucide-react";
 import { useCurrentGym, useGymUpdate } from "@/lib/hooks/use-gym";
+import { useAmenityCatalog, useGymAmenities, useAddGymAmenity, useRemoveGymAmenity } from "@/lib/hooks/use-amenities";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -355,6 +358,95 @@ function GymInfoSection() {
   );
 }
 
+// ── Amenities Section ─────────────────────────────────────────────────────────
+
+function AmenitiesSection() {
+  const { data: gymAmenities, isLoading } = useGymAmenities();
+  const { data: catalog } = useAmenityCatalog();
+  const addAmenity = useAddGymAmenity();
+  const removeAmenity = useRemoveGymAmenity();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const gymAmenityIds = new Set((gymAmenities ?? []).map((a) => a.id));
+  const available = (catalog?.items ?? []).filter((a) => !gymAmenityIds.has(a.id) && a.is_active);
+
+  const handleAdd = async (amenityId: string) => {
+    setShowDropdown(false);
+    await addAmenity.mutateAsync(amenityId);
+  };
+
+  const handleRemove = async (amenityId: string) => {
+    setRemovingId(amenityId);
+    try { await removeAmenity.mutateAsync(amenityId); }
+    finally { setRemovingId(null); }
+  };
+
+  return (
+    <SectionCard icon={Sparkles} title="Gym Amenities" subtitle="Features available at your gym" iconColor="#8b5cf6">
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground py-4 text-center">Loading…</div>
+      ) : (
+        <div className="space-y-3">
+          {/* Current amenities */}
+          <div className="flex flex-wrap gap-2 min-h-[32px]">
+            {(gymAmenities ?? []).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">No amenities added yet.</p>
+            ) : (
+              (gymAmenities ?? []).map((amenity) => (
+                <span
+                  key={amenity.id}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                  style={{ background: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}
+                >
+                  {amenity.name}
+                  <button
+                    onClick={() => handleRemove(amenity.id)}
+                    disabled={removingId === amenity.id}
+                    className="hover:opacity-70 disabled:opacity-40 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+
+          {/* Add button + dropdown */}
+          {available.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+                style={{ background: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}
+              >
+                <Plus className="h-3 w-3" /> Add Amenity
+              </button>
+              {showDropdown && (
+                <div
+                  className="absolute left-0 top-9 z-10 rounded-xl overflow-hidden shadow-lg w-52 max-h-48 overflow-y-auto"
+                  style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                >
+                  {available.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => handleAdd(a.id)}
+                      disabled={addAmenity.isPending}
+                      className="w-full text-left px-3 py-2 text-[12px] font-medium text-foreground hover:opacity-70 transition-opacity disabled:opacity-40"
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function GymSettingsPage() {
@@ -367,6 +459,7 @@ export default function GymSettingsPage() {
         </p>
       </div>
       <GymInfoSection />
+      <AmenitiesSection />
     </div>
   );
 }
