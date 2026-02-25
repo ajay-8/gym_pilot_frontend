@@ -6,6 +6,7 @@ import {
   useMyGymTrainerContract,
   useUpdateAvailability,
   useCreateSession,
+  useMyClients,
 } from "@/lib/hooks/use-trainer-portal";
 import type { WeeklyAvailability, ScheduleResponse, PTSessionInSchedule } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -526,6 +527,7 @@ export default function SchedulePage() {
   const weekStartStr                               = isoDate(weekStart);
   const weekEndStr                                 = isoDate(addDays(weekStart, 6));
   const { data: schedule, isLoading }              = useMySchedule(weekStartStr, weekEndStr);
+  const { data: clientsData }                      = useMyClients({ page_size: 100 });
 
   // Auto-scroll to 6 AM once data loads
   useEffect(() => {
@@ -560,21 +562,17 @@ export default function SchedulePage() {
     return map;
   }, [schedule]);
 
-  // Unique clients from all sessions (for Create Session dialog)
+  // Clients with an active package (for Create Session dialog)
+  // Uses the full client roster so brand-new clients (no sessions yet) are included.
   const clientOptions = useMemo((): ClientOption[] => {
-    const seen = new Map<string, ClientOption>();
-    Object.values(sessionsByDay).flat().forEach(s => {
-      if (!seen.has(s.member_id)) {
-        const name = [s.member_first_name, s.member_last_name].filter(Boolean).join(" ") || `Client ${s.member_id.slice(0, 6)}`;
-        seen.set(s.member_id, {
-          member_id: s.member_id,
-          package_purchase_id: s.package_purchase_id,
-          name,
-        });
-      }
-    });
-    return Array.from(seen.values());
-  }, [sessionsByDay]);
+    return (clientsData?.items ?? [])
+      .filter(c => c.active_package_purchase_id != null && c.active_package_credits_remaining > 0)
+      .map(c => ({
+        member_id: c.participant_id,
+        package_purchase_id: c.active_package_purchase_id!,
+        name: [c.first_name, c.last_name].filter(Boolean).join(" ") || `Client ${c.participant_id.slice(0, 6)}`,
+      }));
+  }, [clientsData]);
 
   // Summary stats
   const stats = useMemo(() => {

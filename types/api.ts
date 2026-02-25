@@ -1391,3 +1391,38 @@ export interface AllParticipantsListParams {
   search?: string;
   role?: ParticipantRole;
 }
+
+// ── PT Client Types (Trainer's client roster) ─────────────────────────────────
+
+export interface PTClientSummary {
+  participant_id: string;
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  total_sessions: number;
+  sessions_completed: number;
+  sessions_scheduled: number;
+  last_session_at: string | null;
+  next_session_at: string | null;
+  active_package_name: string | null;
+  active_package_credits_remaining: number;
+  active_package_expiry: string | null;
+  active_package_purchase_id: string | null;
+}
+
+export interface PTClientListResponse {
+  items: PTClientSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface PTClientListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
+

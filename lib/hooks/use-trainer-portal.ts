@@ -4,16 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { trainersApi } from "../api/trainers";
 import { ptApi } from "../api/pt";
 import type {
-  TrainerProfileUpdateRequest,
   AvailabilityUpdateRequest,
+  CommissionListParams,
+  PTClientListParams,
   PTPackageCreateRequest,
-  PTPackageUpdateRequest,
   PTPackageListParams,
+  PTPackageUpdateRequest,
   PTSessionCancelRequest,
   PTSessionCompleteRequest,
   PTSessionCreateRequest,
   PTSessionListParams,
-  CommissionListParams,
+  TrainerProfileUpdateRequest,
 } from "@/types/api";
 import { useAuth } from "./use-auth";
 
@@ -35,6 +36,8 @@ export const trainerPortalKeys = {
     [...trainerPortalKeys.all, "packages", params] as const,
   sessions: (params: PTSessionListParams) =>
     [...trainerPortalKeys.all, "sessions", params] as const,
+  clients: (gymId: string | undefined, params: PTClientListParams) =>
+    [...trainerPortalKeys.all, "clients", gymId, params] as const,
 };
 
 // ── GymTrainerContract self-resolution ─────────────────────────────────────────────────
@@ -256,5 +259,14 @@ export function useCreateSession() {
       queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "sessions"] });
       queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "schedule"] });
     },
+  });
+}
+
+export function useMyClients(params: PTClientListParams = {}) {
+  const { gymContext } = useAuth();
+  return useQuery({
+    queryKey: trainerPortalKeys.clients(gymContext?.gym_id, params),
+    queryFn: () => ptApi.listMyClients(params),
+    enabled: !!gymContext?.gym_id,
   });
 }

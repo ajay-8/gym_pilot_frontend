@@ -117,14 +117,19 @@ function GreenBtn({ href, children, className = "" }: { href: string; children: 
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated, hasGymContext, hasHydrated } = useAuth();
+  const { isAuthenticated, gymContext, hasGymContext, hasHydrated } = useAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (isAuthenticated) router.push(hasGymContext ? "/dashboard" : "/select-gym");
-  }, [isAuthenticated, hasGymContext, hasHydrated, router]);
+    if (!isAuthenticated) return;
+    if (!hasGymContext) { router.push("/select-gym"); return; }
+    const roles = gymContext?.roles ?? [];
+    const isTrainer = roles.includes("trainer");
+    const isAdmin = roles.some((r) => ["owner", "admin", "staff"].includes(r));
+    router.push(isTrainer && !isAdmin ? "/trainer/dashboard" : "/dashboard");
+  }, [isAuthenticated, hasGymContext, gymContext, hasHydrated, router]);
 
   if (!hasHydrated || isAuthenticated) {
     return (

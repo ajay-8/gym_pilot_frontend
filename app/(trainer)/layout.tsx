@@ -9,6 +9,7 @@ import {
   Clock,
   DollarSign,
   User,
+  Users,
   LogOut,
   Building2,
   ChevronRight,
@@ -33,6 +34,7 @@ import type { ParticipantRole } from "@/types/api";
 const navigation = [
   { name: "Dashboard",    href: "/trainer/dashboard",    icon: Home },
   { name: "My Packages",  href: "/trainer/packages",     icon: Package },
+  { name: "Clients",      href: "/trainer/clients",      icon: Users },
   { name: "Sessions",     href: "/trainer/sessions",     icon: CalendarCheck },
   { name: "Schedule",     href: "/trainer/schedule",     icon: Clock },
   { name: "Commissions",  href: "/trainer/commissions",  icon: DollarSign },
@@ -81,6 +83,7 @@ export default function TrainerLayout({ children }: { children: React.ReactNode 
   const pageNames: Record<string, string> = {
     "/trainer/dashboard":   "Dashboard",
     "/trainer/packages":    "My Packages",
+    "/trainer/clients":     "My Clients",
     "/trainer/sessions":    "Sessions",
     "/trainer/schedule":    "Schedule",
     "/trainer/commissions": "Commissions",

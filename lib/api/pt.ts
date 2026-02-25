@@ -1,17 +1,19 @@
 import apiClient from "./client";
 import type {
-  PTPackageResponse,
-  PTPackageListResponse,
+  PTClientListParams,
+  PTClientListResponse,
   PTPackageCreateRequest,
-  PTPackageUpdateRequest,
   PTPackageListParams,
-  PTSessionResponse,
-  PTSessionListResponse,
-  PTSessionCreateRequest,
-  PTSessionUpdateRequest,
+  PTPackageListResponse,
+  PTPackageResponse,
+  PTPackageUpdateRequest,
   PTSessionCancelRequest,
   PTSessionCompleteRequest,
+  PTSessionCreateRequest,
   PTSessionListParams,
+  PTSessionListResponse,
+  PTSessionResponse,
+  PTSessionUpdateRequest,
 } from "@/types/api";
 
 export const ptApi = {
@@ -77,5 +79,12 @@ export const ptApi = {
   markNoShow: (id: string) =>
     apiClient
       .post(`/pt/sessions/${id}/no-show`)
+      .then((r) => r.data),
+
+  // ── Clients (trainer's client roster) ────────────────────────────────────────
+
+  listMyClients: (params: PTClientListParams = {}) =>
+    apiClient
+      .get<PTClientListResponse>("/pt/clients", { params })
       .then((r) => r.data),
 };
