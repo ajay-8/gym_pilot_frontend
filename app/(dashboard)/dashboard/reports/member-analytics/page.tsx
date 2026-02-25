@@ -279,10 +279,11 @@ export default function MemberAnalyticsPage() {
                     />
                     <Tooltip
                       {...darkTooltipStyle}
-                      formatter={(value: number, name: string, props: { payload?: { percentage?: number } }) => [
-                        `${value} (${props.payload?.percentage?.toFixed(1) ?? 0}%)`,
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      formatter={((value: number | undefined, _name: string, item: any) => [
+                        `${value ?? 0} (${item?.payload?.percentage?.toFixed(1) ?? 0}%)`,
                         "Active Members",
-                      ]}
+                      ]) as any}
                     />
                     <Bar dataKey="count" radius={[3, 3, 0, 0]}>
                       {planData.map((entry, index) => (
@@ -352,7 +353,7 @@ export default function MemberAnalyticsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {planData.map((plan, index) => (
+                {planData.map((plan) => (
                   <div key={plan.name}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">

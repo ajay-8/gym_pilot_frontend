@@ -715,7 +715,7 @@ export interface CheckInListParams {
 }
 
 // Trainer Types
-export interface GymTrainerResponse {
+export interface GymTrainerContractResponse {
   id: string;
   gym_id: string;
   participant_id: string;
@@ -723,7 +723,7 @@ export interface GymTrainerResponse {
   hourly_rate: string | null;
   commission_rate: string | null;
   currency: string;
-  weekly_availability: Record<string, { start: string; end: string }[]>;
+  weekly_availability: WeeklyAvailability;
   max_sessions_per_day: number | null;
   status: string; // "active" | "inactive"
   onboarding_date: string;
@@ -732,15 +732,36 @@ export interface GymTrainerResponse {
   updated_at: string;
 }
 
-export interface GymTrainerListResponse {
-  trainers: GymTrainerResponse[];
+export interface GymTrainerContractListResponse {
+  trainers: GymTrainerContractResponse[];
   total: number;
   page: number;
   per_page: number;
   total_pages: number;
 }
 
-export interface GymTrainerCreateRequest {
+// Used by the trainer onboard flow (creates User + Participant + Role + GymTrainerContract in one step)
+export interface GymTrainerContractOnboardRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  hourly_rate?: number;
+  commission_rate?: number;
+  currency?: string;
+  weekly_availability?: WeeklyAvailability;
+  max_sessions_per_day?: number;
+  onboarding_date: string;
+}
+
+export interface GymTrainerContractOnboardResponse {
+  trainer: GymTrainerContractResponse;
+  is_new_user: boolean;
+  invitation_sent: boolean;
+}
+
+// Legacy — kept for reference, not used by the POST endpoint anymore
+export interface GymTrainerContractCreateRequest {
   participant_id: string;
   hourly_rate?: number;
   commission_rate?: number;
@@ -749,10 +770,11 @@ export interface GymTrainerCreateRequest {
   onboarding_date: string;
 }
 
-export interface GymTrainerUpdateRequest {
+export interface GymTrainerContractUpdateRequest {
   hourly_rate?: number | null;
   commission_rate?: number | null;
   max_sessions_per_day?: number | null;
+  weekly_availability?: WeeklyAvailability;
   status?: string;
 }
 
@@ -822,7 +844,7 @@ export interface CommissionListParams {
   per_page?: number;
 }
 
-export interface GymTrainerListParams {
+export interface GymTrainerContractListParams {
   status?: string;
   page?: number;
   per_page?: number;
@@ -1128,4 +1150,244 @@ export interface GymAmenityResponse {
   gym_id: string;
   amenity_id: string;
   created_at: string;
+}
+
+// ── Trainer Portal Types ───────────────────────────────────────────────────────
+
+export interface CertificationItem {
+  name: string;
+  issuer: string;
+  issue_date: string | null;
+  expiry_date: string | null;
+  credential_id: string | null;
+}
+
+export interface TrainerProfileResponse {
+  id: string;
+  user_id: string;
+  bio: string | null;
+  years_of_experience: number | null;
+  certifications: CertificationItem[];
+  specializations: string[];
+  qualifications: string | null;
+  training_philosophy: string | null;
+  languages_spoken: string[];
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrainerProfileUpdateRequest {
+  bio?: string | null;
+  years_of_experience?: number | null;
+  certifications?: CertificationItem[];
+  specializations?: string[];
+  qualifications?: string | null;
+  training_philosophy?: string | null;
+  languages_spoken?: string[];
+  is_public?: boolean;
+}
+
+// ── Availability & Schedule ───────────────────────────────────────────────────
+
+export interface AvailabilitySlot {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+}
+
+export interface WeeklyAvailability {
+  monday: AvailabilitySlot[];
+  tuesday: AvailabilitySlot[];
+  wednesday: AvailabilitySlot[];
+  thursday: AvailabilitySlot[];
+  friday: AvailabilitySlot[];
+  saturday: AvailabilitySlot[];
+  sunday: AvailabilitySlot[];
+}
+
+export interface AvailabilityUpdateRequest {
+  weekly_availability: WeeklyAvailability;
+}
+
+export interface PTSessionInSchedule {
+  id: string;
+  member_id: string;
+  package_purchase_id: string;
+  member_first_name: string | null;
+  member_last_name: string | null;
+  start_time: string;
+  end_time: string;
+  session_type: string | null;
+  status: string;
+}
+
+export interface DaySchedule {
+  date: string;
+  availability: AvailabilitySlot[];
+  pt_sessions: PTSessionInSchedule[];
+}
+
+export interface ScheduleResponse {
+  gym_trainer_id: string;
+  date_from: string;
+  date_to: string;
+  schedule: Record<string, DaySchedule>;
+}
+
+// ── PT Package Types ──────────────────────────────────────────────────────────
+
+export type PTPlanType = "single" | "bundle" | "monthly_unlimited";
+export type PTSessionMode = "in_person" | "online" | "hybrid";
+
+export interface PTPackageResponse {
+  id: string;
+  trainer_id: string; // TrainerProfile.id
+  name: string;
+  description: string | null;
+  plan_type: PTPlanType;
+  session_mode: PTSessionMode;
+  session_count: number;       // number of sessions included
+  duration_minutes: number;    // duration per session in minutes
+  expiry_days: number | null;  // days until expiry (null = no expiry)
+  price: string;
+  currency: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PTPackageCreateRequest {
+  name: string;
+  description?: string;
+  plan_type: PTPlanType;
+  session_mode: PTSessionMode;
+  session_count?: number;
+  duration_minutes?: number;
+  expiry_days?: number;
+  price: number;
+  currency?: string;
+}
+
+export interface PTPackageUpdateRequest {
+  name?: string;
+  description?: string | null;
+  plan_type?: PTPlanType;
+  session_mode?: PTSessionMode;
+  session_count?: number | null;
+  duration_minutes?: number;
+  expiry_days?: number | null;
+  price?: number;
+  status?: string;
+}
+
+export interface PTPackageListResponse {
+  items: PTPackageResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface PTPackageListParams {
+  trainer_profile_id?: string;
+  status?: string;
+  plan_type?: PTPlanType;
+  session_mode?: PTSessionMode;
+  page?: number;
+  page_size?: number;
+}
+
+// ── PT Session Types ──────────────────────────────────────────────────────────
+
+export interface PTSessionResponse {
+  id: string;
+  gym_id: string | null;
+  trainer_id: string;           // GymParticipant.id of trainer
+  member_id: string;            // GymParticipant.id of member/client
+  package_purchase_id: string;
+  start_time: string;           // ISO timestamp
+  end_time: string;             // ISO timestamp
+  session_mode: PTSessionMode;
+  meeting_link: string | null;
+  session_type: string | null;
+  notes: string | null;
+  trainer_notes: string | null;
+  status: string; // scheduled | completed | cancelled | no_show
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  credit_refunded: boolean;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PTSessionListResponse {
+  items: PTSessionResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface PTSessionCreateRequest {
+  trainer_id: string;
+  member_id: string;
+  package_purchase_id: string;
+  start_time: string;
+  end_time: string;
+  session_type?: string;
+  session_mode?: PTSessionMode;
+  meeting_link?: string;
+  notes?: string;
+}
+
+export interface PTSessionUpdateRequest {
+  start_time?: string;
+  end_time?: string;
+  session_mode?: PTSessionMode;
+  meeting_link?: string | null;
+  notes?: string | null;
+}
+
+export interface PTSessionCancelRequest {
+  reason?: string;
+  refund_credit?: boolean;
+}
+
+export interface PTSessionCompleteRequest {
+  trainer_notes?: string;
+}
+
+export interface PTSessionListParams {
+  status?: string;
+  page?: number;
+  page_size?: number;
+}
+
+// ── Team & Members (All Participants Directory) ───────────────────────────────
+
+export interface ParticipantSummary {
+  participant_id: string;
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  roles: ParticipantRole[];
+  status: string;
+  joined_at: string;
+}
+
+export interface AllParticipantsResponse {
+  participants: ParticipantSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AllParticipantsListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  role?: ParticipantRole;
 }

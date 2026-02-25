@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useMembershipPlans, useMembershipPlanDelete } from "@/lib/hooks/use-membership-plans";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +66,6 @@ const planColors = [
 ];
 
 export default function MembershipPlansPage() {
-  const router = useRouter();
   const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingPlan, setEditingPlan] = useState<MembershipPlanResponse | null>(null);

@@ -51,11 +51,12 @@ function isGroup(item: NavEntry): item is NavGroup {
 const navigation: NavEntry[] = [
   { name: "Dashboard",       href: "/dashboard",            icon: Home,      roles: ["owner", "admin", "staff", "trainer", "member"] },
   {
-    name: "Gym Participants", icon: Users, roles: ["owner", "admin", "staff"],
+    name: "Team & Members", icon: Users, roles: ["owner", "admin", "staff"],
     children: [
-      { name: "Members",  href: "/dashboard/members",  icon: Users,   roles: ["owner", "admin", "staff"] },
-      { name: "Trainers", href: "/dashboard/trainers", icon: Dumbbell, roles: ["owner", "admin"] },
-      { name: "Staff",    href: "/dashboard/staff",    icon: UserCog, roles: ["owner", "admin"] },
+      { name: "All",      href: "/dashboard/participants", icon: Users,    roles: ["owner", "admin", "staff"] },
+      { name: "Members",  href: "/dashboard/members",      icon: Users,    roles: ["owner", "admin", "staff"] },
+      { name: "Trainers", href: "/dashboard/trainers",     icon: Dumbbell, roles: ["owner", "admin"] },
+      { name: "Staff",    href: "/dashboard/staff",        icon: UserCog,  roles: ["owner", "admin"] },
     ],
   },
   { name: "Check-ins",       href: "/dashboard/check-ins",  icon: ScanLine,  roles: ["owner", "admin", "staff"] },

@@ -1,37 +1,42 @@
 import apiClient from "./client";
 import type {
-  GymTrainerResponse,
-  GymTrainerListResponse,
-  GymTrainerCreateRequest,
-  GymTrainerUpdateRequest,
-  GymTrainerListParams,
+  GymTrainerContractResponse,
+  GymTrainerContractListResponse,
+  GymTrainerContractOnboardRequest,
+  GymTrainerContractOnboardResponse,
+  GymTrainerContractUpdateRequest,
+  GymTrainerContractListParams,
   TrainerPerformanceResponse,
   CommissionSummaryResponse,
   CommissionListResponse,
   CommissionResponse,
   CommissionListParams,
   MarkCommissionPaidRequest,
+  TrainerProfileResponse,
+  TrainerProfileUpdateRequest,
+  AvailabilityUpdateRequest,
+  ScheduleResponse,
 } from "@/types/api";
 
 export const trainersApi = {
-  list: (gymId: string, params: GymTrainerListParams = {}) =>
+  list: (gymId: string, params: GymTrainerContractListParams = {}) =>
     apiClient
-      .get<GymTrainerListResponse>(`/trainers/gyms/${gymId}/trainers`, { params })
+      .get<GymTrainerContractListResponse>(`/trainers/gyms/${gymId}/trainers`, { params })
       .then((r) => r.data),
 
   get: (gymId: string, trainerId: string) =>
     apiClient
-      .get<GymTrainerResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}`)
+      .get<GymTrainerContractResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}`)
       .then((r) => r.data),
 
-  create: (gymId: string, payload: GymTrainerCreateRequest) =>
+  create: (gymId: string, payload: GymTrainerContractOnboardRequest) =>
     apiClient
-      .post<GymTrainerResponse>(`/trainers/gyms/${gymId}/trainers`, payload)
+      .post<GymTrainerContractOnboardResponse>(`/trainers/gyms/${gymId}/trainers`, payload)
       .then((r) => r.data),
 
-  update: (gymId: string, trainerId: string, payload: GymTrainerUpdateRequest) =>
+  update: (gymId: string, trainerId: string, payload: GymTrainerContractUpdateRequest) =>
     apiClient
-      .put<GymTrainerResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}`, payload)
+      .put<GymTrainerContractResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}`, payload)
       .then((r) => r.data),
 
   offboard: (gymId: string, trainerId: string) =>
@@ -67,5 +72,34 @@ export const trainersApi = {
         `/trainers/gyms/${gymId}/commissions/${commissionId}/mark-paid`,
         payload
       )
+      .then((r) => r.data),
+
+  // ── Trainer Portal (self-view) ─────────────────────────────────────────────
+
+  getMyProfile: () =>
+    apiClient
+      .get<TrainerProfileResponse>("/trainers/profile")
+      .then((r) => r.data),
+
+  updateMyProfile: (payload: TrainerProfileUpdateRequest) =>
+    apiClient
+      .put<TrainerProfileResponse>("/trainers/profile", payload)
+      .then((r) => r.data),
+
+  getMe: (gymId: string) =>
+    apiClient
+      .get<GymTrainerContractResponse>(`/trainers/gyms/${gymId}/trainers/me`)
+      .then((r) => r.data),
+
+  updateAvailability: (gymId: string, trainerId: string, payload: AvailabilityUpdateRequest) =>
+    apiClient
+      .put(`/trainers/gyms/${gymId}/trainers/${trainerId}/availability`, payload)
+      .then((r) => r.data),
+
+  getSchedule: (gymId: string, trainerId: string, dateFrom: string, dateTo: string) =>
+    apiClient
+      .get<ScheduleResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}/schedule`, {
+        params: { date_from: dateFrom, date_to: dateTo },
+      })
       .then((r) => r.data),
 };

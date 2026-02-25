@@ -62,7 +62,7 @@ function toLocalDatetimeInput(isoOrEmpty?: string) {
 
 // ── Status config ──────────────────────────────────────────────────────────────
 
-const SESSION_STATUS: Record<ClassSessionStatus, { label: string; color: string; bg: string; icon: React.FC<{ className?: string }> }> = {
+const SESSION_STATUS: Record<ClassSessionStatus, { label: string; color: string; bg: string; icon: React.FC<{ className?: string; style?: React.CSSProperties }> }> = {
   scheduled: { label: "Scheduled", color: "#10b981", bg: "rgba(16,185,129,0.12)", icon: CheckCircle2 },
   completed: { label: "Completed", color: "#6b7280", bg: "rgba(107,114,128,0.12)", icon: CheckCircle2 },
   cancelled: { label: "Cancelled", color: "#ef4444", bg: "rgba(239,68,68,0.12)", icon: Ban },

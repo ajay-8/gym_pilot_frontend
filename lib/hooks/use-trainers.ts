@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { trainersApi } from "../api/trainers";
 import type {
-  GymTrainerCreateRequest,
-  GymTrainerUpdateRequest,
-  GymTrainerListParams,
+  GymTrainerContractOnboardRequest,
+  GymTrainerContractUpdateRequest,
+  GymTrainerContractListParams,
   CommissionListParams,
   MarkCommissionPaidRequest,
+  WeeklyAvailability,
 } from "@/types/api";
 import { useAuth } from "./use-auth";
 
 export const trainerKeys = {
   all: ["trainers"] as const,
   lists: () => [...trainerKeys.all, "list"] as const,
-  list: (gymId: string | undefined, params: GymTrainerListParams) =>
+  list: (gymId: string | undefined, params: GymTrainerContractListParams) =>
     [...trainerKeys.lists(), gymId, params] as const,
   detail: (gymId: string | undefined, trainerId: string) =>
     [...trainerKeys.all, "detail", gymId, trainerId] as const,
@@ -24,7 +25,7 @@ export const trainerKeys = {
     [...trainerKeys.all, "commissions", gymId, trainerId, params] as const,
 };
 
-export function useTrainers(params: GymTrainerListParams = {}) {
+export function useTrainers(params: GymTrainerContractListParams = {}) {
   const { gymContext } = useAuth();
   const gymId = gymContext?.gym_id;
 
@@ -88,10 +89,11 @@ export function useTrainerCreate() {
   const gymId = gymContext?.gym_id;
 
   return useMutation({
-    mutationFn: (payload: GymTrainerCreateRequest) =>
+    mutationFn: (payload: GymTrainerContractOnboardRequest) =>
       trainersApi.create(gymId!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trainerKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ["all-participants"] });
     },
   });
 }
@@ -107,8 +109,30 @@ export function useTrainerUpdate() {
       payload,
     }: {
       trainerId: string;
-      payload: GymTrainerUpdateRequest;
+      payload: GymTrainerContractUpdateRequest;
     }) => trainersApi.update(gymId!, trainerId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trainerKeys.lists() });
+    },
+  });
+}
+
+export function useUpdateTrainerAvailability() {
+  const queryClient = useQueryClient();
+  const { gymContext } = useAuth();
+  const gymId = gymContext?.gym_id;
+
+  return useMutation({
+    mutationFn: ({
+      trainerId,
+      availability,
+    }: {
+      trainerId: string;
+      availability: WeeklyAvailability;
+    }) =>
+      trainersApi.updateAvailability(gymId!, trainerId, {
+        weekly_availability: availability,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: trainerKeys.lists() });
     },

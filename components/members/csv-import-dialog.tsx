@@ -56,7 +56,7 @@ export function CSVImportDialog({ open, onOpenChange }: CSVImportDialogProps) {
       setValidation(validationResult);
 
       setStep("preview");
-    } catch (error) {
+    } catch {
       alert("Failed to read CSV file. Please check the file format.");
     }
   };

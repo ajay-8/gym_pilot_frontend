@@ -14,8 +14,10 @@ import {
 import {
   useDashboard, useRevenueAnalytics, useMemberAnalytics, useMembershipReport,
 } from "@/lib/hooks/use-reports";
-import { AddMemberDialog } from "@/components/members/add-member-dialog";
+import { AddPersonDialog, type AddPersonPayload } from "@/components/participants/add-person-dialog";
 import { AddEditPlanDialog } from "@/components/membership-plans/add-edit-plan-dialog";
+import { useTrainerCreate } from "@/lib/hooks/use-trainers";
+import { useMemberOnboard } from "@/lib/hooks/use-members";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,6 +68,7 @@ function Skeleton({ w = "w-full", h = "h-4" }: { w?: string; h?: string }) {
 
 export default function DashboardPage() {
   const [showAddMember, setShowAddMember] = useState(false);
+  const [addMemberError, setAddMemberError] = useState<string | null>(null);
   const [showAddPlan, setShowAddPlan] = useState(false);
   const [expiryDays, setExpiryDays] = useState<7 | 14 | 30>(7);
 
@@ -73,6 +76,33 @@ export default function DashboardPage() {
   const { data: memberData } = useMemberAnalytics();
   const { data: revenueData } = useRevenueAnalytics();
   const { data: membershipReport } = useMembershipReport();
+  const trainerCreate = useTrainerCreate();
+  const memberOnboard = useMemberOnboard();
+
+  const handleAddPerson = async (payload: AddPersonPayload) => {
+    setAddMemberError(null);
+    const { first_name, last_name, email, phone, roles, trainer, member } = payload;
+    try {
+      const isTrainer = roles.includes("trainer");
+      const nonTrainerRoles = roles.filter((r) => r !== "trainer");
+      if (isTrainer) {
+        await trainerCreate.mutateAsync({
+          first_name, last_name, email, phone: phone || undefined,
+          onboarding_date: trainer!.onboarding_date,
+          weekly_availability: trainer!.weekly_availability,
+        });
+      }
+      if (nonTrainerRoles.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mp: any = { first_name, last_name, email: email || undefined, phone, roles: nonTrainerRoles };
+        if (member) { mp.plan_id = member.plan_id; mp.membership_start_date = member.membership_start_date; }
+        await memberOnboard.mutateAsync(mp);
+      }
+      setShowAddMember(false);
+    } catch (e: unknown) {
+      setAddMemberError((e as { detail?: string })?.detail ?? "Failed to add person.");
+    }
+  };
 
   // Revenue % change
   const revChangePct = dash && Number(dash.revenue_last_month) > 0
@@ -719,7 +749,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <AddMemberDialog open={showAddMember} onOpenChange={setShowAddMember} />
+      {showAddMember && (
+        <AddPersonDialog
+          onClose={() => setShowAddMember(false)}
+          onSubmit={handleAddPerson}
+          isPending={trainerCreate.isPending || memberOnboard.isPending}
+          error={addMemberError}
+          defaultRoles={["member"]}
+        />
+      )}
       <AddEditPlanDialog open={showAddPlan} onOpenChange={setShowAddPlan} plan={null} />
     </div>
   );
