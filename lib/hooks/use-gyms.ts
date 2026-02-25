@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { gymsApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { GymOnboardRequest, PaginationParams } from "@/types/api";
+import { PaginationParams } from "@/types/api";
 
 // Query key factory
 export const gymsKeys = {
@@ -23,7 +23,6 @@ export function useMyGyms(params?: PaginationParams) {
 // Hook for gym onboarding
 export function useGymOnboard() {
   const router = useRouter();
-  const { setAuth, setGymContext } = useAuthStore();
 
   return useMutation({
     mutationFn: gymsApi.onboard,

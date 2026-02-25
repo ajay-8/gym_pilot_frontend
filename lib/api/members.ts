@@ -1,5 +1,7 @@
 import apiClient from "./client";
 import {
+  AllParticipantsListParams,
+  AllParticipantsResponse,
   BulkMemberImportRequest,
   BulkMemberImportResponse,
   MemberListResponse,
@@ -121,6 +123,14 @@ export const membersApi = {
     const { data } = await apiClient.get(
       `/members/${userId}/membership-audit-history`
     );
+    return data;
+  },
+
+  /**
+   * List all participants at the current gym regardless of role (Team & Members directory)
+   */
+  listAllParticipants: async (params: AllParticipantsListParams = {}): Promise<AllParticipantsResponse> => {
+    const { data } = await apiClient.get<AllParticipantsResponse>("/members/all-participants", { params });
     return data;
   },
 };

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { membersApi } from "../api/members";
 import {
+  AllParticipantsListParams,
   BulkMemberImportRequest,
   MemberOnboardRequest,
   MemberStatusUpdateRequest,
@@ -61,10 +62,9 @@ export function useMemberOnboard() {
   return useMutation({
     mutationFn: (payload: MemberOnboardRequest) => membersApi.onboard(payload),
     onSuccess: () => {
-      // Invalidate members list to refetch with new member
       queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
-      // Also invalidate dashboard to update member count
       queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["all-participants"] });
     },
   });
 }
@@ -213,5 +213,18 @@ export function useMembershipAuditHistory(userId: string, enabled = true) {
     queryFn: () => membersApi.getMembershipAuditHistory(userId),
     enabled: enabled && !!gymContext?.gym_id && !!userId,
     staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+/**
+ * Hook to fetch all participants at the gym regardless of role (Team & Members directory)
+ */
+export function useAllParticipants(params: AllParticipantsListParams = {}) {
+  const { gymContext } = useAuth();
+
+  return useQuery({
+    queryKey: ["all-participants", gymContext?.gym_id, params],
+    queryFn: () => membersApi.listAllParticipants(params),
+    enabled: !!gymContext?.gym_id,
   });
 }

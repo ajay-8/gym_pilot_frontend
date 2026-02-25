@@ -55,7 +55,7 @@ function initials(first?: string, last?: string | null) {
 
 // ── Method config ─────────────────────────────────────────────────────────────
 
-const METHOD_CONFIG: Record<PaymentMethod, { label: string; icon: React.FC<{ className?: string }>; color: string; bg: string }> = {
+const METHOD_CONFIG: Record<PaymentMethod, { label: string; icon: React.FC<{ className?: string; style?: React.CSSProperties }>; color: string; bg: string }> = {
   cash: { label: "Cash", icon: Banknote, color: "#10b981", bg: "rgba(16,185,129,0.12)" },
   upi: { label: "UPI", icon: Smartphone, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)" },
   card: { label: "Card", icon: CreditCard, color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
@@ -65,7 +65,7 @@ const METHOD_CONFIG: Record<PaymentMethod, { label: string; icon: React.FC<{ cla
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
-type StatusConfig = { label: string; icon: React.FC<{ className?: string }>; color: string; bg: string };
+type StatusConfig = { label: string; icon: React.FC<{ className?: string; style?: React.CSSProperties }>; color: string; bg: string };
 const STATUS_CONFIG: Record<PaymentStatus, StatusConfig> = {
   completed: { label: "Completed", icon: CheckCircle2, color: "#10b981", bg: "rgba(16,185,129,0.12)" },
   pending: { label: "Pending", icon: Clock, color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },

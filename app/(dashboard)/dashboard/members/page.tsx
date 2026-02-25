@@ -28,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserPlus, ChevronLeft, ChevronRight, Search, Filter, X, Download, Upload, Pencil, Trash2, Eye } from "lucide-react";
 import { StatusType } from "@/types/api";
-import { AddMemberDialog } from "@/components/members/add-member-dialog";
+import { AddPersonDialog, type AddPersonPayload } from "@/components/participants/add-person-dialog";
 import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { CSVImportDialog } from "@/components/members/csv-import-dialog";
 import { exportMembersToCSV } from "@/lib/utils/csv-export";
@@ -42,7 +42,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useMemberDelete } from "@/lib/hooks/use-members";
+import { useMemberDelete, useMemberOnboard } from "@/lib/hooks/use-members";
+import { useTrainerCreate } from "@/lib/hooks/use-trainers";
 
 // Helper function to get badge variant based on status
 function getStatusBadgeVariant(status: StatusType): "default" | "success" | "warning" | "destructive" | "secondary" {
@@ -110,6 +111,51 @@ export default function MembersPage() {
 
   // Delete mutation
   const deleteMember = useMemberDelete();
+
+  // Add person mutations
+  const onboard = useMemberOnboard();
+  const createTrainer = useTrainerCreate();
+  const [addError, setAddError] = useState<string | null>(null);
+
+  const handleAddPerson = async (payload: AddPersonPayload) => {
+    setAddError(null);
+    const { first_name, last_name, email, phone, roles, trainer, member } = payload;
+    try {
+      const isTrainer = roles.includes("trainer");
+      const nonTrainerRoles = roles.filter((r) => r !== "trainer");
+
+      if (isTrainer) {
+        await createTrainer.mutateAsync({
+          first_name,
+          last_name,
+          email,
+          phone: phone || undefined,
+          onboarding_date: trainer!.onboarding_date,
+          weekly_availability: trainer!.weekly_availability,
+        });
+      }
+
+      if (nonTrainerRoles.length > 0) {
+        const memberPayload: any = {
+          first_name,
+          last_name,
+          email: email || undefined,
+          phone,
+          roles: nonTrainerRoles,
+        };
+        if (member) {
+          memberPayload.plan_id = member.plan_id;
+          memberPayload.membership_start_date = member.membership_start_date;
+        }
+        await onboard.mutateAsync(memberPayload);
+      }
+
+      setShowAddDialog(false);
+    } catch (e: unknown) {
+      const err = e as { detail?: string };
+      setAddError(err?.detail ?? "Failed to add person.");
+    }
+  };
 
   const handlePreviousPage = () => {
     setPage((prev) => Math.max(1, prev - 1));
@@ -220,7 +266,7 @@ export default function MembersPage() {
             iconBg: "rgba(107,114,128,0.1)",
             iconColor: "#6b7280",
           },
-        ].map(({ label, value, bar, iconBg, iconColor }) => (
+        ].map(({ label, value, bar, iconColor }) => (
           <div
             key={label}
             className="rounded-xl overflow-hidden"
@@ -505,8 +551,17 @@ export default function MembersPage() {
         </CardContent>
       </Card>
 
-      {/* Add Member Dialog */}
-      <AddMemberDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
+      {/* Add Person Dialog (Member pre-checked) */}
+      {showAddDialog && (
+        <AddPersonDialog
+          availableRoles={["member"]}
+          defaultRoles={["member"]}
+          onClose={() => setShowAddDialog(false)}
+          onSubmit={handleAddPerson}
+          isPending={onboard.isPending || createTrainer.isPending}
+          error={addError}
+        />
+      )}
 
       {/* CSV Import Dialog */}
       <CSVImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />

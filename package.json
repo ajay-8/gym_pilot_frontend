@@ -8,7 +8,7 @@
     "dev:clean": "node scripts/start-dev.js",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint app/ lib/ components/ types/",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

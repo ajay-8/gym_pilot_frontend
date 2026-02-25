@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  Search, Plus, X, Phone, Mail, Calendar, Clock, MessageSquare,
+  Search, Plus, X, Phone, Mail, Calendar, MessageSquare,
   ChevronRight, Trash2, AlertTriangle, CheckCircle, Send, UserCheck, Pencil, Save,
 } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import { useMemberOnboard } from "@/lib/hooks/use-members";
 import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
 import {
   LeadResponse, LeadStatus, LeadSource,
-  LeadCreateRequest, LeadMarkLostRequest, LeadUpdateRequest,
+  LeadCreateRequest, LeadUpdateRequest,
 } from "@/types/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -161,8 +161,10 @@ function AddLeadDialog({ onClose }: { onClose: () => void }) {
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
               Phone *
             </label>
-            <input value={form.phone} onChange={e => set("phone", e.target.value)}
-              placeholder="+91 9876543210"
+            <input value={form.phone} onChange={e => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+              placeholder="9876543210"
+              maxLength={10}
+              type="tel"
               className="w-full px-3 py-2 rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground"
               style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }} />
           </div>
@@ -681,7 +683,8 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
               {/* Phone */}
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Phone *</label>
-                <input value={editForm.phone ?? ""} onChange={e => setF("phone", e.target.value)}
+                <input value={editForm.phone ?? ""} onChange={e => setF("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  type="tel" maxLength={10}
                   className="w-full px-3 py-2 rounded-xl text-sm outline-none text-foreground"
                   style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }} />
               </div>

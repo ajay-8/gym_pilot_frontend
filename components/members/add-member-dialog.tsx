@@ -49,7 +49,7 @@ const formSchema = z
     gender: z.enum(["male", "female", "other", "prefer_not_to_say"]).optional(),
     date_of_birth: z.string().optional(),
     roles: z
-      .array(z.enum(["member", "trainer", "staff", "admin", "owner"]))
+      .array(z.enum(["member", "staff", "admin", "owner"]))
       .min(1, "At least one role is required"),
     membership_start_date: z.string().optional(),
     plan_id: z.string().optional(),
@@ -272,7 +272,6 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { value: "member", label: "Member" },
-                      { value: "trainer", label: "Trainer" },
                       { value: "staff", label: "Staff" },
                       { value: "admin", label: "Admin" },
                     ].map((role) => (
@@ -288,7 +287,7 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                             >
                               <FormControl>
                                 <Checkbox
-                                  checked={field.value?.includes(role.value as ParticipantRole)}
+                                  checked={field.value?.includes(role.value as "member" | "staff" | "admin" | "owner")}
                                   onCheckedChange={(checked) => {
                                     return checked
                                       ? field.onChange([...field.value, role.value])
@@ -309,6 +308,9 @@ export function AddMemberDialog({ open, onOpenChange }: AddMemberDialogProps) {
                       />
                     ))}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    To add a trainer, use the <span className="text-primary font-medium">Trainers page</span> — trainers require a contract (rate, availability) that is set up there.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

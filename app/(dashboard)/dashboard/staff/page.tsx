@@ -11,8 +11,12 @@ import {
   Shield,
   Calendar,
   CheckCircle,
+  UserPlus,
 } from "lucide-react";
-import { useStaff } from "@/lib/hooks/use-staff";
+import { useStaff, staffKeys } from "@/lib/hooks/use-staff";
+import { useMemberOnboard } from "@/lib/hooks/use-members";
+import { useQueryClient } from "@tanstack/react-query";
+import { AddPersonDialog, type AddPersonPayload } from "@/components/participants/add-person-dialog";
 import type { StaffListItem } from "@/types/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -294,12 +298,17 @@ export default function StaffPage() {
   const [page] = useState(1);
   const [selected, setSelected] = useState<StaffListItem | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [showAddStaff, setShowAddStaff] = useState(false);
+  const [addStaffError, setAddStaffError] = useState<string | null>(null);
 
   const { data, isLoading } = useStaff({
     search: search || undefined,
     page,
     page_size: 100,
   });
+
+  const onboard = useMemberOnboard();
+  const queryClient = useQueryClient();
 
   const items = data?.items ?? [];
 
@@ -315,7 +324,25 @@ export default function StaffPage() {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   }
-  void showToast; // prevent unused warning
+
+  const handleAddStaff = async (payload: AddPersonPayload) => {
+    setAddStaffError(null);
+    try {
+      await onboard.mutateAsync({
+        first_name: payload.first_name,
+        last_name: payload.last_name,
+        email: payload.email,
+        phone: payload.phone || "",
+        roles: payload.roles,
+      });
+      queryClient.invalidateQueries({ queryKey: staffKeys.all });
+      setShowAddStaff(false);
+      showToast("Staff member added successfully.");
+    } catch (e: unknown) {
+      const err = e as { detail?: string };
+      setAddStaffError(err?.detail ?? "Failed to add staff member.");
+    }
+  };
 
   const statCards = [
     {
@@ -351,11 +378,21 @@ export default function StaffPage() {
   return (
     <div className="space-y-5">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-base font-bold text-foreground leading-tight">Staff Management</h1>
-        <p className="text-[11px] text-muted-foreground">
-          View all staff, admins, trainers and owners at your gym
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-base font-bold text-foreground leading-tight">Staff Management</h1>
+          <p className="text-[11px] text-muted-foreground">
+            View all staff, admins, trainers and owners at your gym
+          </p>
+        </div>
+        <button
+          onClick={() => { setShowAddStaff(true); setAddStaffError(null); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 flex-shrink-0"
+          style={{ background: "linear-gradient(135deg, #3b82f6, #2563eb)" }}
+        >
+          <UserPlus className="h-4 w-4" />
+          Add Staff
+        </button>
       </div>
 
       {/* ── Stat Cards ──────────────────────────────────────────────────── */}
@@ -443,6 +480,18 @@ export default function StaffPage() {
           />
           <DetailPanel item={selected} onClose={() => setSelected(null)} />
         </>
+      )}
+
+      {/* ── Add Staff Dialog ────────────────────────────────────────────── */}
+      {showAddStaff && (
+        <AddPersonDialog
+          availableRoles={["staff", "admin"]}
+          defaultRoles={["staff"]}
+          onClose={() => { setShowAddStaff(false); setAddStaffError(null); }}
+          onSubmit={handleAddStaff}
+          isPending={onboard.isPending}
+          error={addStaffError}
+        />
       )}
 
       {/* ── Toast ───────────────────────────────────────────────────────── */}
