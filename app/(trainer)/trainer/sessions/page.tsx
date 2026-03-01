@@ -3,11 +3,10 @@
 import { useState } from "react";
 import {
   useMySessions,
-  useCancelSession,
-  useCompleteSession,
-  useMarkNoShow,
+  useMyClients,
+  useLogSession,
 } from "@/lib/hooks/use-trainer-portal";
-import type { PTSessionResponse } from "@/types/api";
+import type { PTClientSummary, PTActivePackageSummary } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -19,23 +18,35 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarCheck, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CalendarCheck, ClipboardList, Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDateTime(iso: string) {
-  const d = new Date(iso);
-  return {
-    date: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
-    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
-  };
+function primaryPkg(client: PTClientSummary): PTActivePackageSummary | null {
+  return client.active_packages.find((p) => p.credits_remaining > 0) ?? client.active_packages[0] ?? null;
 }
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  scheduled: { bg: "rgba(59,130,246,0.12)",  text: "#60a5fa",  label: "Scheduled" },
-  completed: { bg: "rgba(16,185,129,0.12)",  text: "#34d399",  label: "Completed" },
-  cancelled: { bg: "rgba(239,68,68,0.1)",    text: "#f87171",  label: "Cancelled" },
-  no_show:   { bg: "rgba(245,158,11,0.12)",  text: "#fbbf24",  label: "No Show" },
+function clientName(c: PTClientSummary): string {
+  return [c.first_name, c.last_name].filter(Boolean).join(" ") || "Client";
+}
+
+function durationMins(start: string, end: string): number {
+  return Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000);
+}
+
+const MODE_LABELS: Record<string, string> = {
+  in_person: "In Person",
+  online: "Online",
+  hybrid: "Hybrid",
 };
 
 const MODE_STYLE: Record<string, { bg: string; text: string }> = {
@@ -44,326 +55,273 @@ const MODE_STYLE: Record<string, { bg: string; text: string }> = {
   hybrid:    { bg: "rgba(236,72,153,0.12)", text: "#f472b6" },
 };
 
-// ── Complete Session Dialog ────────────────────────────────────────────────────
+// ── Log Session Dialog ────────────────────────────────────────────────────────
 
-function CompleteDialog({
-  session,
-  onClose,
-}: {
-  session: PTSessionResponse;
-  onClose: () => void;
-}) {
-  const complete = useCompleteSession();
+function LogSessionDialog({ onClose }: { onClose: () => void }) {
+  const logSession = useLogSession();
+  const { data: clientsData, isLoading: clientsLoading } = useMyClients({ page_size: 100 });
+
+  const clients = (clientsData?.items ?? []).filter((c) => c.active_packages.length > 0);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string>("");
+  const [date, setDate] = useState(today);
+  const [duration, setDuration] = useState(60);
+  const [mode, setMode] = useState("in_person");
+  const [notes, setNotes] = useState("");
   const [trainerNotes, setTrainerNotes] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const selectedClient = clients.find((c) => c.participant_id === selectedClientId) ?? null;
+  const packages = selectedClient?.active_packages ?? [];
+
+  const handleClientChange = (val: string) => {
+    setSelectedClientId(val);
+    const client = clients.find((c) => c.participant_id === val);
+    const pkg = client ? (primaryPkg(client) ?? client.active_packages[0]) : null;
+    setSelectedPurchaseId(pkg?.purchase_id ?? "");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await complete.mutateAsync({
-      id: session.id,
-      payload: {
+    setErr(null);
+    if (!selectedClientId || !selectedPurchaseId) {
+      setErr("Select a client and package.");
+      return;
+    }
+    try {
+      await logSession.mutateAsync({
+        member_id: selectedClientId,
+        package_purchase_id: selectedPurchaseId,
+        session_date: date,
+        duration_minutes: duration,
+        session_mode: mode,
+        notes: notes.trim() || undefined,
         trainer_notes: trainerNotes.trim() || undefined,
-      },
-    });
-    onClose();
+      });
+      onClose();
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail ?? "Failed to log session.");
+    }
   };
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Complete Session</DialogTitle>
+          <DialogTitle>Log Session</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div>
-            <Label htmlFor="trainer-notes">Session Notes</Label>
-            <Textarea
-              id="trainer-notes"
-              value={trainerNotes}
-              onChange={(e) => setTrainerNotes(e.target.value)}
-              placeholder="Optional post-session notes..."
-              className="mt-1 resize-none"
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={complete.isPending}>Cancel</Button>
-            <Button type="submit" disabled={complete.isPending}>
-              {complete.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Mark Complete
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Cancel Session Dialog ─────────────────────────────────────────────────────
-
-function CancelDialog({
-  session,
-  onClose,
-}: {
-  session: PTSessionResponse;
-  onClose: () => void;
-}) {
-  const cancel = useCancelSession();
-  const [reason, setReason] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await cancel.mutateAsync({
-      id: session.id,
-      payload: { reason: reason.trim() || "Cancelled by trainer" },
-    });
-    onClose();
-  };
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Cancel Session</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div>
-            <Label htmlFor="reason">Reason (optional)</Label>
-            <Textarea
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Why is the session being cancelled?"
-              className="mt-1 resize-none"
-              rows={2}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={cancel.isPending}>Keep Session</Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={cancel.isPending}
-            >
-              {cancel.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Cancel Session
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Session Row ───────────────────────────────────────────────────────────────
-
-function SessionRow({
-  session,
-  onComplete,
-  onCancel,
-  onNoShow: _onNoShow,
-}: {
-  session: PTSessionResponse;
-  onComplete: () => void;
-  onCancel: () => void;
-  onNoShow: () => void;
-}) {
-  const noShowMut = useMarkNoShow();
-  const { date, time } = fmtDateTime(session.start_time);
-  const durationMins = Math.round((new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000);
-  const status = STATUS_STYLE[session.status] ?? STATUS_STYLE.scheduled;
-  const mode = MODE_STYLE[session.session_mode] ?? MODE_STYLE.in_person;
-  const isScheduled = session.status === "scheduled";
-
-  return (
-    <div
-      className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg"
-      style={{ background: "hsl(var(--muted)/0.3)", border: "1px solid hsl(var(--border)/0.5)" }}
-    >
-      {/* Date / Time */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-foreground">{date}</p>
-          <p className="text-sm text-muted-foreground">{time}</p>
-          <span
-            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-            style={{ background: mode.bg, color: mode.text }}
-          >
-            {session.session_mode.replace("_", " ")}
-          </span>
-          <span
-            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-            style={{ background: status.bg, color: status.text }}
-          >
-            {status.label}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          {durationMins} min
-          {session.notes && ` · ${session.notes}`}
-          {session.cancellation_reason && ` · Reason: ${session.cancellation_reason}`}
+        <p className="text-xs text-muted-foreground -mt-1 mb-1">
+          Record a session that just happened. One credit will be deducted immediately.
         </p>
-        {session.meeting_link && (
-          <a
-            href={session.meeting_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-primary hover:underline mt-0.5 inline-block"
-          >
-            Join meeting →
-          </a>
+        {clientsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : clients.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No clients with active packages.
+          </p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <Label>Client</Label>
+              <Select value={selectedClientId} onValueChange={handleClientChange}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.participant_id} value={c.participant_id}>
+                      {clientName(c)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {packages.length > 1 && (
+              <div>
+                <Label>Package</Label>
+                <Select value={selectedPurchaseId} onValueChange={setSelectedPurchaseId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select package..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {packages.map((p) => (
+                      <SelectItem key={p.purchase_id} value={p.purchase_id}>
+                        {p.name} ({p.credits_remaining} credits)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div>
+              <Label>Date</Label>
+              <Input
+                type="date"
+                className="mt-1"
+                value={date}
+                max={today}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Duration (min)</Label>
+                <Input
+                  type="number"
+                  className="mt-1"
+                  value={duration}
+                  min={15}
+                  max={240}
+                  step={15}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Mode</Label>
+                <Select value={mode} onValueChange={setMode}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(MODE_LABELS).map(([val, label]) => (
+                      <SelectItem key={val} value={val}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Session Notes (optional)</Label>
+              <Textarea
+                className="mt-1 resize-none"
+                rows={2}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="What was covered..."
+              />
+            </div>
+
+            <div>
+              <Label>Trainer Notes (optional)</Label>
+              <Textarea
+                className="mt-1 resize-none"
+                rows={2}
+                value={trainerNotes}
+                onChange={(e) => setTrainerNotes(e.target.value)}
+                placeholder="Progress, observations..."
+              />
+            </div>
+
+            {err && <p className="text-xs text-red-400">{err}</p>}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={onClose} disabled={logSession.isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={logSession.isPending || !selectedClientId || !selectedPurchaseId}>
+                {logSession.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Log Session
+              </Button>
+            </DialogFooter>
+          </form>
         )}
-      </div>
-
-      {/* Actions */}
-      {isScheduled && (
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            style={{ borderColor: "rgba(16,185,129,0.3)", color: "#10b981" }}
-            onClick={onComplete}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-            Complete
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs text-muted-foreground"
-            onClick={onCancel}
-          >
-            <XCircle className="h-3.5 w-3.5 mr-1" />
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 text-xs text-muted-foreground"
-            onClick={async () => {
-              await noShowMut.mutateAsync(session.id);
-            }}
-            disabled={noShowMut.isPending}
-          >
-            <AlertCircle className="h-3.5 w-3.5 mr-1" />
-            No Show
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Sessions Tab ──────────────────────────────────────────────────────────────
-
-function SessionsTab({
-  status,
-  emptyMsg,
-}: {
-  status: string;
-  emptyMsg: string;
-}) {
-  const params = { status, page_size: 50 };
-
-  const { data, isLoading } = useMySessions(params);
-  const sessions = data?.items ?? [];
-
-  const [completeTarget, setCompleteTarget] = useState<PTSessionResponse | undefined>();
-  const [cancelTarget, setCancelTarget] = useState<PTSessionResponse | undefined>();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!sessions.length) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <CalendarCheck className="h-8 w-8 text-muted-foreground opacity-30 mb-2" />
-        <p className="text-sm text-muted-foreground">{emptyMsg}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {sessions.map((s) => (
-        <SessionRow
-          key={s.id}
-          session={s}
-          onComplete={() => setCompleteTarget(s)}
-          onCancel={() => setCancelTarget(s)}
-          onNoShow={() => {}}
-        />
-      ))}
-
-      {completeTarget && (
-        <CompleteDialog session={completeTarget} onClose={() => setCompleteTarget(undefined)} />
-      )}
-      {cancelTarget && (
-        <CancelDialog session={cancelTarget} onClose={() => setCancelTarget(undefined)} />
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { key: "scheduled",  label: "Upcoming",   emptyMsg: "No upcoming sessions" },
-  { key: "completed",  label: "Past",        emptyMsg: "No completed sessions yet" },
-  { key: "cancelled",  label: "Cancelled",   emptyMsg: "No cancelled sessions" },
-  { key: "no_show",    label: "No-Show",     emptyMsg: "No no-show sessions" },
-] as const;
-
 export default function SessionsPage() {
-  const [activeTab, setActiveTab] = useState<string>("scheduled");
+  const { data, isLoading } = useMySessions({ status: "completed", page_size: 50 });
+  const [logOpen, setLogOpen] = useState(false);
+
+  const sessions = data?.items ?? [];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">Sessions</h2>
-        <p className="text-sm text-muted-foreground mt-1">View and manage your PT sessions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Sessions</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Session history. Use "Log Session" after each training session to deduct a credit.
+          </p>
+        </div>
+        <Button onClick={() => setLogOpen(true)}>
+          <ClipboardList className="h-4 w-4 mr-2" />
+          Log Session
+        </Button>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          {/* Tab bar */}
-          <div
-            className="flex"
-            style={{ borderBottom: "1px solid hsl(var(--border))" }}
-          >
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className="flex-1 py-3 text-sm font-medium transition-colors"
-                  style={{
-                    color: isActive ? "#8b5cf6" : "hsl(var(--muted-foreground))",
-                    borderBottom: isActive ? "2px solid #8b5cf6" : "2px solid transparent",
-                    background: "transparent",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <CalendarCheck className="h-10 w-10 text-muted-foreground opacity-25 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">No sessions logged yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                After a client trains with you, click "Log Session" to record it and deduct a credit.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {sessions.map((s) => {
+                const modeStyle = MODE_STYLE[s.session_mode] ?? MODE_STYLE.in_person;
+                const dur = durationMins(s.start_time, s.end_time);
+                const name = [s.member_first_name, s.member_last_name].filter(Boolean).join(" ") || "Client";
+                const dateStr = s.completed_at
+                  ? format(parseISO(s.completed_at), "EEE dd MMM yyyy")
+                  : format(parseISO(s.start_time), "EEE dd MMM yyyy");
 
-          <div className="p-4">
-            {TABS.map((tab) =>
-              activeTab === tab.key ? (
-                <SessionsTab key={tab.key} status={tab.key} emptyMsg={tab.emptyMsg} />
-              ) : null
-            )}
-          </div>
+                return (
+                  <div key={s.id} className="flex items-center gap-3 px-4 py-3">
+                    <div
+                      className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
+                      style={{ background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}
+                    >
+                      {(s.member_first_name?.[0] ?? "?").toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">{name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {dateStr} · {dur} min
+                        {s.session_type && ` · ${s.session_type}`}
+                      </p>
+                      {s.trainer_notes && (
+                        <p className="text-xs mt-0.5" style={{ color: "#a78bfa" }}>
+                          {s.trainer_notes}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: modeStyle.bg, color: modeStyle.text }}
+                    >
+                      {MODE_LABELS[s.session_mode] ?? s.session_mode}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {logOpen && <LogSessionDialog onClose={() => setLogOpen(false)} />}
     </div>
   );
 }

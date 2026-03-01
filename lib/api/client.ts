@@ -52,7 +52,11 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized - Token expired
-    if (error.response?.status === 401 && originalRequest) {
+    // Skip refresh for auth endpoints (login, register, etc.) — those 401s are
+    // credential errors, not expired-token errors. Attempting a refresh would fail
+    // and then trigger window.location.href="/login", causing a page reload.
+    const isAuthEndpoint = originalRequest?.url?.includes("/auth/");
+    if (error.response?.status === 401 && originalRequest && !isAuthEndpoint) {
       // Try to refresh the token
       try {
         const { data } = await axios.post<{ access_token: string }>(

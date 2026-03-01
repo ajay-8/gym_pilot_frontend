@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/hooks/use-auth";
+import { useAuth, useSetGymSession, resolvePortalRoute } from "@/lib/hooks/use-auth";
+import { useMyGyms } from "@/lib/hooks/use-gyms";
 import {
   Users, CreditCard, Calendar, BarChart3, Shield, GitBranch,
   CheckCircle, XCircle, ChevronDown, ChevronUp, ArrowRight,
@@ -121,15 +122,27 @@ export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const setGymSession = useSetGymSession();
+  const { data: gymsData, isLoading: gymsLoading } = useMyGyms(
+    { page: 1, page_size: 2 },
+    { enabled: isAuthenticated && !hasGymContext && hasHydrated }
+  );
+
   useEffect(() => {
     if (!hasHydrated) return;
     if (!isAuthenticated) return;
-    if (!hasGymContext) { router.push("/select-gym"); return; }
-    const roles = gymContext?.roles ?? [];
-    const isTrainer = roles.includes("trainer");
-    const isAdmin = roles.some((r) => ["owner", "admin", "staff"].includes(r));
-    router.push(isTrainer && !isAdmin ? "/trainer/dashboard" : "/dashboard");
-  }, [isAuthenticated, hasGymContext, gymContext, hasHydrated, router]);
+    if (!hasGymContext) {
+      if (gymsLoading || !gymsData) return; // wait for gyms data
+      if (gymsData.total === 1 && !setGymSession.isPending) {
+        setGymSession.mutate({ gym_id: gymsData.items[0].id });
+        // useSetGymSession handles routing on success
+      } else {
+        router.push("/select-gym"); // 0 or 2+ gyms
+      }
+      return;
+    }
+    router.push(resolvePortalRoute(gymContext?.roles ?? []));
+  }, [isAuthenticated, hasGymContext, gymContext, hasHydrated, gymsData, gymsLoading, setGymSession, router]);
 
   if (!hasHydrated || isAuthenticated) {
     return (

@@ -25,24 +25,43 @@ import { useAuth } from "@/lib/hooks/use-auth";
 // Form validation schema
 const formSchema = z.object({
   // Gym Details
-  gymName: z.string().min(2, "Gym name must be at least 2 characters"),
+  gymName:   z.string().min(2, "Gym name must be at least 2 characters"),
   brandName: z.string().optional(),
-  city: z.string().min(2, "City is required"),
-  state: z.string().min(2, "State is required"),
-  country: z.string().min(2, "Country is required"),
-  pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits").optional(),
+  address:   z.string().optional(),
+  city:      z.string().min(2, "City is required"),
+  state:     z.string().min(2, "State is required"),
+  country:   z.string().min(2, "Country is required"),
+  pincode:   z.string().regex(/^\d{6}$/, "Pincode must be 6 digits").optional().or(z.literal("")),
+  latitude:  z.string().optional().or(z.literal("")),
+  longitude: z.string().optional().or(z.literal("")),
 
   // Owner Details
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email:           z.string().email("Invalid email address"),
+  password:        z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().optional(),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Invalid phone number (10 digits starting with 6-9)").optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+  firstName:       z.string().min(2, "First name is required"),
+  lastName:        z.string().optional(),
+  phone:           z.string().regex(/^[6-9]\d{9}$/, "Invalid phone number (10 digits starting with 6-9)").optional(),
+})
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  })
+  .superRefine((data, ctx) => {
+    const hasLat = !!data.latitude;
+    const hasLon = !!data.longitude;
+    if (hasLat !== hasLon) {
+      const msg = "Both latitude and longitude must be provided together";
+      if (!hasLat) ctx.addIssue({ code: z.ZodIssueCode.custom, message: msg, path: ["latitude"] });
+      if (!hasLon) ctx.addIssue({ code: z.ZodIssueCode.custom, message: msg, path: ["longitude"] });
+    }
+    if (data.latitude && (isNaN(Number(data.latitude)) || Number(data.latitude) < -90 || Number(data.latitude) > 90)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be between -90 and 90", path: ["latitude"] });
+    }
+    if (data.longitude && (isNaN(Number(data.longitude)) || Number(data.longitude) < -180 || Number(data.longitude) > 180)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Must be between -180 and 180", path: ["longitude"] });
+    }
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -64,13 +83,16 @@ export default function RegisterPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      gymName: "",
+      gymName:   "",
       brandName: "",
-      city: "",
-      state: "",
-      country: "India",
-      pincode: "",
-      email: "",
+      address:   "",
+      city:      "",
+      state:     "",
+      country:   "India",
+      pincode:   "",
+      latitude:  "",
+      longitude: "",
+      email:     "",
       password: "",
       confirmPassword: "",
       firstName: "",
@@ -85,12 +107,15 @@ export default function RegisterPage() {
     try {
       await gymOnboard.mutateAsync({
         gym: {
-          name: values.gymName,
+          name:       values.gymName,
           brand_name: values.brandName || undefined,
-          city: values.city,
-          state: values.state,
-          country: values.country,
-          pincode: values.pincode ? parseInt(values.pincode) : undefined,
+          address:    values.address   || undefined,
+          city:       values.city,
+          state:      values.state,
+          country:    values.country,
+          pincode:    values.pincode ? parseInt(values.pincode) : undefined,
+          latitude:   values.latitude  ? parseFloat(values.latitude)  : undefined,
+          longitude:  values.longitude ? parseFloat(values.longitude) : undefined,
         },
         owner: {
           email: values.email,
@@ -184,6 +209,20 @@ export default function RegisterPage() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Street address" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -237,6 +276,36 @@ export default function RegisterPage() {
                           <FormLabel>Pincode</FormLabel>
                           <FormControl>
                             <Input placeholder="400001" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="latitude"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Latitude</FormLabel>
+                          <FormControl>
+                            <Input placeholder="19.0760" inputMode="decimal" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="longitude"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Longitude</FormLabel>
+                          <FormControl>
+                            <Input placeholder="72.8777" inputMode="decimal" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

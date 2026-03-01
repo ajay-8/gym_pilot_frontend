@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2, Clock, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -415,14 +416,15 @@ function CreateSessionDialog({
 // ─── AvailabilityEditor ───────────────────────────────────────────────────────
 
 function AvailabilityEditor({
-  initial, gymTrainerId, onClose,
+  initial, initialNotes, gymTrainerId, onClose,
 }: {
-  initial: WeeklyAvailability; gymTrainerId: string; onClose: () => void;
+  initial: WeeklyAvailability; initialNotes: string | null; gymTrainerId: string; onClose: () => void;
 }) {
   const updateAvailability = useUpdateAvailability();
   const [avail, setAvail] = useState<WeeklyAvailability>(() =>
     Object.fromEntries(DAYS.map(d => [d, (initial[d] ?? []).map(s => ({ ...s }))])) as unknown as WeeklyAvailability
   );
+  const [notes, setNotes] = useState(initialNotes ?? "");
 
   const addSlot    = (day: DayKey) =>
     setAvail(p => ({ ...p, [day]: [...p[day], { start: "09:00", end: "17:00" }] }));
@@ -467,6 +469,21 @@ function AvailabilityEditor({
               )}
             </div>
           ))}
+
+          {/* Availability notes */}
+          <div>
+            <p className="text-sm font-semibold text-foreground">Availability Notes</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Exception days, holidays, or extra info for members.
+            </p>
+            <Textarea
+              className="mt-2 resize-none"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Not available Dec 25–Jan 1. Flexible on weekends with advance notice."
+            />
+          </div>
         </div>
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={onClose} disabled={updateAvailability.isPending}>
@@ -476,7 +493,7 @@ function AvailabilityEditor({
             onClick={async () => {
               await updateAvailability.mutateAsync({
                 trainerId: gymTrainerId,
-                payload: { weekly_availability: avail },
+                payload: { weekly_availability: avail, availability_notes: notes || undefined },
               });
               onClose();
             }}
@@ -566,12 +583,15 @@ export default function SchedulePage() {
   // Uses the full client roster so brand-new clients (no sessions yet) are included.
   const clientOptions = useMemo((): ClientOption[] => {
     return (clientsData?.items ?? [])
-      .filter(c => c.active_package_purchase_id != null && c.active_package_credits_remaining > 0)
-      .map(c => ({
-        member_id: c.participant_id,
-        package_purchase_id: c.active_package_purchase_id!,
-        name: [c.first_name, c.last_name].filter(Boolean).join(" ") || `Client ${c.participant_id.slice(0, 6)}`,
-      }));
+      .flatMap(c => {
+        const pkg = c.active_packages.find(p => p.credits_remaining > 0);
+        if (!pkg) return [];
+        return [{
+          member_id: c.participant_id,
+          package_purchase_id: pkg.purchase_id,
+          name: [c.first_name, c.last_name].filter(Boolean).join(" ") || `Client ${c.participant_id.slice(0, 6)}`,
+        }];
+      });
   }, [clientsData]);
 
   // Summary stats
@@ -928,6 +948,7 @@ export default function SchedulePage() {
       {editAvail && gymTrainer && (
         <AvailabilityEditor
           initial={(gymTrainer as any).weekly_availability ?? (Object.fromEntries(DAYS.map(d => [d, []])) as unknown as WeeklyAvailability)}
+          initialNotes={(gymTrainer as any).availability_notes ?? null}
           gymTrainerId={gymTrainer.id}
           onClose={() => setEditAvail(false)}
         />

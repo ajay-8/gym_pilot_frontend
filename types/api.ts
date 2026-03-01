@@ -126,6 +126,19 @@ export interface PasswordResetConfirmSchema {
 }
 
 // Gym Types
+export interface GymCreateRequest {
+  name: string;
+  brand_name?: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: number;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface GymResponse {
   id: string;
   name: string;
@@ -724,6 +737,7 @@ export interface GymTrainerContractResponse {
   commission_rate: string | null;
   currency: string;
   weekly_availability: WeeklyAvailability;
+  availability_notes: string | null;
   max_sessions_per_day: number | null;
   status: string; // "active" | "inactive"
   onboarding_date: string;
@@ -1207,6 +1221,7 @@ export interface WeeklyAvailability {
 
 export interface AvailabilityUpdateRequest {
   weekly_availability: WeeklyAvailability;
+  availability_notes?: string | null;
 }
 
 export interface PTSessionInSchedule {
@@ -1238,6 +1253,11 @@ export interface ScheduleResponse {
 
 export type PTPlanType = "single" | "bundle" | "monthly_unlimited";
 export type PTSessionMode = "in_person" | "online" | "hybrid";
+
+export interface WeeklySlot {
+  day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+  start_time: string; // "HH:MM"
+}
 
 export interface PTPackageResponse {
   id: string;
@@ -1319,6 +1339,9 @@ export interface PTSessionResponse {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  // Enriched — populated in trainer/member own-session list
+  member_first_name: string | null;
+  member_last_name: string | null;
 }
 
 export interface PTSessionListResponse {
@@ -1358,7 +1381,19 @@ export interface PTSessionCompleteRequest {
   trainer_notes?: string;
 }
 
+export interface PTSessionLogRequest {
+  member_id: string;
+  package_purchase_id: string;
+  session_date: string; // "YYYY-MM-DD"
+  duration_minutes: number;
+  session_mode: string;
+  session_type?: string;
+  notes?: string;
+  trainer_notes?: string;
+}
+
 export interface PTSessionListParams {
+  member_id?: string;
   status?: string;
   page?: number;
   page_size?: number;
@@ -1394,6 +1429,14 @@ export interface AllParticipantsListParams {
 
 // ── PT Client Types (Trainer's client roster) ─────────────────────────────────
 
+export interface PTActivePackageSummary {
+  purchase_id: string;
+  name: string;
+  credits_total: number;
+  credits_remaining: number;
+  expiry: string | null;
+}
+
 export interface PTClientSummary {
   participant_id: string;
   user_id: string;
@@ -1403,13 +1446,8 @@ export interface PTClientSummary {
   phone: string | null;
   total_sessions: number;
   sessions_completed: number;
-  sessions_scheduled: number;
   last_session_at: string | null;
-  next_session_at: string | null;
-  active_package_name: string | null;
-  active_package_credits_remaining: number;
-  active_package_expiry: string | null;
-  active_package_purchase_id: string | null;
+  active_packages: PTActivePackageSummary[];
 }
 
 export interface PTClientListResponse {
@@ -1424,5 +1462,172 @@ export interface PTClientListParams {
   page?: number;
   page_size?: number;
   search?: string;
+}
+
+// ── Member Portal Types ────────────────────────────────────────────────────────
+
+export type PTPackagePurchaseStatus = "active" | "expired" | "exhausted" | "cancelled";
+
+export interface MembershipPlanSummary {
+  id: string;
+  name: string;
+  duration_days: number | null;
+  price: number;
+}
+
+/** Full membership record — returned by GET /memberships/my-memberships */
+export interface MembershipResponse {
+  id: string;
+  participant_id: string;
+  plan_id: string | null;
+  plan: MembershipPlanSummary | null;
+  renewed_from_id: string | null;
+  status: StatusType;
+  start_date: string;
+  end_date: string | null;
+  amount_paid: string | null;
+  cancelled_at: string | null;
+  paused_at: string | null;
+  resume_date: string | null;
+  cancellation_reason: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MembershipListResponse {
+  items: MembershipResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+/** PT package purchase record — returned by GET /pt/purchases/my-purchases */
+export interface PTPackagePurchaseResponse {
+  id: string;
+  participant_id: string;
+  package_id: string;
+  payment_id: string;
+  sessions_total: number;
+  sessions_used: number;
+  sessions_remaining: number;
+  purchase_date: string;
+  expiry_date: string | null;
+  status: PTPackagePurchaseStatus;
+  package_snapshot: Record<string, unknown>;
+  trainer_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PTPackagePurchaseListResponse {
+  items: PTPackagePurchaseResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface PTPackagePurchaseListParams {
+  status?: PTPackagePurchaseStatus;
+  page?: number;
+  page_size?: number;
+}
+
+/** Dashboard summary for member portal — returned by GET /members/me/summary */
+export interface MemberDashboardSummary {
+  participant_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  active_membership: MembershipResponse | null;
+  check_ins_this_month: number;
+  upcoming_pt_sessions: number;
+  active_pt_credits: number;
+  active_packages: PTPackagePurchaseResponse[];
+  upcoming_sessions: PTSessionResponse[];
+}
+
+export interface MyMembershipsParams {
+  page?: number;
+  page_size?: number;
+}
+
+export interface MySessionsParams {
+  status?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface MyPaymentsParams {
+  page?: number;
+  page_size?: number;
+}
+
+// ── Trainer Public Profile (member discovery) ─────────────────────────────────
+
+export interface PTPackageBrief {
+  id: string;
+  name: string;
+  description: string | null;
+  plan_type: string;
+  session_mode: string;
+  session_count: number;
+  duration_minutes: number;
+  expiry_days: number | null;
+  price: string;
+  currency: string;
+  status: string;
+}
+
+export interface TrainerPublicProfile {
+  gym_trainer_id: string;
+  participant_id: string;
+  user_id: string | null;
+  trainer_name: string | null;
+  hourly_rate: string | null;
+  currency: string;
+  weekly_availability: WeeklyAvailability;
+  max_sessions_per_day: number | null;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  trainer_profile_id: string | null;
+  bio: string | null;
+  years_of_experience: number | null;
+  specializations: string[];
+  certifications: CertificationItem[];
+  qualifications: string | null;
+  training_philosophy: string | null;
+  languages_spoken: string[];
+  availability_notes: string | null;
+  pt_packages: PTPackageBrief[];
+}
+
+// ── Razorpay / Payment Gateway ────────────────────────────────────────────────
+
+export interface RazorpayOrderCreateRequest {
+  amount: number;          // In main currency units (e.g. ₹), NOT paise
+  currency?: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface RazorpayOrderResponse {
+  payment_id: string;      // Internal DB Payment UUID
+  order_id: string;        // Razorpay or mock order ID
+  amount: number;          // In smallest unit (paise)
+  currency: string;
+  key_id: string;          // "mock_key_id" in dev, real Razorpay key in prod
+}
+
+export interface RazorpayPaymentVerifyRequest {
+  order_id: string;        // From create-order response (order_id field)
+  payment_id: string;      // Razorpay payment_id (or "mock_pay_xxx" in dev)
+  signature: string;       // HMAC signature (or any non-empty string in dev)
+}
+
+export interface PTPackagePurchaseCreateRequest {
+  payment_id: string;      // Internal DB Payment UUID from RazorpayOrderResponse
 }
 

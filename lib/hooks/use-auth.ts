@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { authApi } from "@/lib/api";
+import { authApi, gymsApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth-store";
 
 // Query key factory
@@ -8,6 +8,18 @@ export const authKeys = {
   all: ["auth"] as const,
   me: () => [...authKeys.all, "me"] as const,
 };
+
+/** Map gym context roles to the correct portal route. */
+export function resolvePortalRoute(roles: string[]): string {
+  const isAdmin = roles.some((r) => ["owner", "admin", "staff"].includes(r));
+  const isTrainer = roles.includes("trainer");
+  const isMember = roles.includes("member");
+  const portalCount = [isAdmin, isTrainer, isMember].filter(Boolean).length;
+  if (portalCount > 1) return "/select-gym?portal=choose";
+  if (isTrainer) return "/trainer/dashboard";
+  if (isMember) return "/member/dashboard";
+  return "/dashboard";
+}
 
 // Hook to get current user
 export function useCurrentUser() {
@@ -32,29 +44,35 @@ export function useCurrentUser() {
 // Hook for login
 export function useLogin() {
   const router = useRouter();
-  const { setAuth, setGymContext } = useAuthStore();
+  const { setAuth, setGymContext, updateAccessToken } = useAuthStore();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: async (data) => {
       // Clear any persisted gym context from previous session
-      // This ensures user must select gym again and get fresh token with gym_id
       setGymContext(null);
 
-      // Store access token
+      // Store access token and fetch user info
       setAuth({ id: "", email: "" } as any, data.access_token);
-
-      // Fetch user info
       const userInfo = await authApi.getMe();
       setAuth(userInfo.user, data.access_token);
-
-      // Always redirect to gym selection after login
-      // This ensures user explicitly selects gym and gets fresh token with gym_id
-      router.push("/select-gym");
-
-      // Invalidate auth queries
       queryClient.invalidateQueries({ queryKey: authKeys.all });
+
+      // Skip gym selector when user belongs to exactly one gym
+      const gymsData = await gymsApi.getMyGyms({ page: 1, page_size: 2 });
+      if (gymsData.total === 1) {
+        const sessionData = await authApi.setSessionGym({ gym_id: gymsData.items[0].id });
+        updateAccessToken(sessionData.access_token);
+        const freshUser = await authApi.getMe();
+        if (freshUser.gym_context) setGymContext(freshUser.gym_context);
+        queryClient.invalidateQueries({ queryKey: authKeys.all });
+        queryClient.invalidateQueries({ queryKey: ["reports"] });
+        queryClient.invalidateQueries({ queryKey: ["members"] });
+        router.push(resolvePortalRoute(freshUser.gym_context?.roles ?? []));
+      } else {
+        router.push("/select-gym"); // 0 or 2+ gyms
+      }
     },
   });
 }
@@ -104,18 +122,7 @@ export function useSetGymSession() {
       queryClient.invalidateQueries({ queryKey: ["members"] });
 
       // Role-based routing
-      const roles = userInfo.gym_context?.roles ?? [];
-      const isTrainer = roles.includes("trainer");
-      const isAdmin = roles.some((r) => ["owner", "admin", "staff"].includes(r));
-
-      if (isTrainer && isAdmin) {
-        // Dual-role: let user choose which portal to enter
-        router.push("/select-gym?portal=choose");
-      } else if (isTrainer) {
-        router.push("/trainer/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(resolvePortalRoute(userInfo.gym_context?.roles ?? []));
     },
   });
 }

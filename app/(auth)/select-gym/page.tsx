@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useMyGyms } from "@/lib/hooks/use-gyms";
 import { useSetGymSession, useAuth } from "@/lib/hooks/use-auth";
-import { Building2, Dumbbell, ChevronRight } from "lucide-react";
+import { Building2, Dumbbell, CreditCard, ChevronRight } from "lucide-react";
 
 export default function SelectGymPage() {
   const { gymContext } = useAuth();
@@ -27,11 +27,46 @@ export default function SelectGymPage() {
     }
   };
 
-  // ── Portal Selector (dual-role: trainer + admin) ──────────────────────────
+  // ── Portal Selector (multi-role users) ───────────────────────────────────
   if (showPortalSelector) {
+    const roles = gymContext?.roles ?? [];
+    const isAdmin = roles.some((r) => ["owner", "admin", "staff"].includes(r));
+    const isTrainer = roles.includes("trainer");
+    const isMember = roles.includes("member");
+
+    const portals = [
+      isAdmin && {
+        label: "Gym Admin Portal",
+        desc: "Manage members, staff, memberships, payments and reports",
+        href: "/dashboard",
+        color: "#10b981",
+        icon: <Building2 className="h-8 w-8" style={{ color: "#10b981" }} />,
+        btnStyle: {},
+      },
+      isTrainer && {
+        label: "Trainer Portal",
+        desc: "Manage your PT packages, sessions, schedule and commissions",
+        href: "/trainer/dashboard",
+        color: "#8b5cf6",
+        icon: <Dumbbell className="h-8 w-8" style={{ color: "#8b5cf6" }} />,
+        btnStyle: { background: "#8b5cf6" },
+      },
+      isMember && {
+        label: "Member Portal",
+        desc: "View your membership, PT sessions, payments and profile",
+        href: "/member/dashboard",
+        color: "#3b82f6",
+        icon: <CreditCard className="h-8 w-8" style={{ color: "#3b82f6" }} />,
+        btnStyle: { background: "#3b82f6" },
+      },
+    ].filter(Boolean) as Array<{
+      label: string; desc: string; href: string;
+      color: string; icon: React.ReactNode; btnStyle: React.CSSProperties;
+    }>;
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-3xl">
           {/* Header */}
           <div className="mb-8 text-center">
             <div className="inline-flex items-center gap-2 mb-6">
@@ -50,64 +85,38 @@ export default function SelectGymPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Gym Admin Portal */}
-            <Card
-              className="cursor-pointer border transition-all duration-200 hover:border-primary hover:shadow-lg hover:shadow-primary/10 group"
-              onClick={() => router.push("/dashboard")}
-            >
-              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-                <div
-                  className="h-16 w-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.2)" }}
-                >
-                  <Building2 className="h-8 w-8" style={{ color: "#10b981" }} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-foreground">Gym Admin Portal</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Manage members, staff, memberships, payments and reports
-                  </p>
-                </div>
-                <Button
-                  className="w-full mt-auto"
-                  onClick={(e) => { e.stopPropagation(); router.push("/dashboard"); }}
-                >
-                  Enter Admin Portal
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Trainer Portal */}
-            <Card
-              className="cursor-pointer border transition-all duration-200 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/10 group"
-              style={{ borderColor: "hsl(var(--border))" }}
-              onClick={() => router.push("/trainer/dashboard")}
-            >
-              <CardContent className="p-6 flex flex-col items-center text-center gap-4">
-                <div
-                  className="h-16 w-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
-                >
-                  <Dumbbell className="h-8 w-8" style={{ color: "#8b5cf6" }} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-foreground">Trainer Portal</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Manage your PT packages, sessions, schedule and commissions
-                  </p>
-                </div>
-                <Button
-                  className="w-full mt-auto"
-                  style={{ background: "#8b5cf6" }}
-                  onClick={(e) => { e.stopPropagation(); router.push("/trainer/dashboard"); }}
-                >
-                  Enter Trainer Portal
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
+          <div className={`grid grid-cols-1 gap-4 ${portals.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+            {portals.map((portal) => (
+              <Card
+                key={portal.href}
+                className="cursor-pointer border transition-all duration-200 hover:shadow-lg group"
+                style={{ borderColor: "hsl(var(--border))" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = portal.color)}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "hsl(var(--border))")}
+                onClick={() => router.push(portal.href)}
+              >
+                <CardContent className="p-6 flex flex-col items-center text-center gap-4">
+                  <div
+                    className="h-16 w-16 rounded-2xl flex items-center justify-center"
+                    style={{ background: `${portal.color}1a`, border: `1px solid ${portal.color}33` }}
+                  >
+                    {portal.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-foreground">{portal.label}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{portal.desc}</p>
+                  </div>
+                  <Button
+                    className="w-full mt-auto"
+                    style={portal.btnStyle}
+                    onClick={(e) => { e.stopPropagation(); router.push(portal.href); }}
+                  >
+                    Enter Portal
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-6">

@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useLogin, useAuth } from "@/lib/hooks/use-auth";
+import { useLogin, useAuth, resolvePortalRoute } from "@/lib/hooks/use-auth";
 
 // Form validation schema
 const formSchema = z.object({
@@ -32,16 +32,17 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string>("");
   const login = useLogin();
-  const { isAuthenticated, hasGymContext, hasHydrated } = useAuth();
+  const { isAuthenticated, gymContext, hasGymContext, hasHydrated } = useAuth();
 
-  // Redirect if already authenticated
+  // Redirect already-authenticated users, but not while login mutation is in progress
+  // (the mutation handles routing itself — this guard is only for direct /login visits)
   useEffect(() => {
     if (!hasHydrated) return;
-
+    if (login.isPending) return;
     if (isAuthenticated) {
-      router.push(hasGymContext ? "/dashboard" : "/select-gym");
+      router.push(hasGymContext ? resolvePortalRoute(gymContext?.roles ?? []) : "/select-gym");
     }
-  }, [isAuthenticated, hasGymContext, hasHydrated, router]);
+  }, [isAuthenticated, gymContext, hasGymContext, hasHydrated, login.isPending, router]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -58,7 +59,15 @@ export default function LoginPage() {
       await login.mutateAsync(values);
       // Success - the hook will redirect to dashboard or gym selection
     } catch (err: any) {
-      setError(err?.detail || "Invalid email or password");
+      // err is an APIError shaped object (see client.ts interceptor)
+      // 401 always means wrong credentials on the login page
+      if (err?.status === 401) {
+        setError("Invalid email or password. Please try again.");
+      } else if (typeof err?.detail === "string" && !err.detail.includes("status code")) {
+        setError(err.detail);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     }
   };
 

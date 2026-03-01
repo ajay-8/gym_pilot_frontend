@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { gymsApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { PaginationParams } from "@/types/api";
+import { GymCreateRequest, PaginationParams } from "@/types/api";
 
 // Query key factory
 export const gymsKeys = {
@@ -12,11 +12,28 @@ export const gymsKeys = {
 };
 
 // Hook to get user's gyms
-export function useMyGyms(params?: PaginationParams) {
+export function useMyGyms(
+  params?: PaginationParams,
+  options: { enabled?: boolean } = {}
+) {
   return useQuery({
     queryKey: gymsKeys.myGyms(params),
     queryFn: () => gymsApi.getMyGyms(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: options.enabled ?? true,
+  });
+}
+
+// Hook to create a new gym for the current user
+export function useCreateGym() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: GymCreateRequest) => gymsApi.createGym(payload),
+    onSuccess: () => {
+      // Invalidate all my-gyms queries (prefix match covers all param variants)
+      queryClient.invalidateQueries({ queryKey: [...gymsKeys.all, "my-gyms"] });
+    },
   });
 }
 

@@ -11,17 +11,17 @@ import {
   UserPlus,
   Dumbbell,
   LogOut,
-  Building2,
   ChevronRight,
   ChevronDown,
+  ArrowLeftRight,
   ScanLine,
   Banknote,
   UserCog,
   Bell,
-  Settings,
   CheckCheck,
   AlertTriangle,
   ScanLine as ScanIcon,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
+import { GymSwitcherPill } from "@/components/gym-switcher-pill";
 import { useNotifications, useMarkAllRead } from "@/lib/hooks/use-notifications";
 import type { NotificationResponse, NotificationType, ParticipantRole } from "@/types/api";
 import { useEffect, useState } from "react";
@@ -64,8 +65,8 @@ const navigation: NavEntry[] = [
   { name: "Classes",         href: "/dashboard/classes",     icon: Calendar,  roles: ["owner", "admin", "staff", "trainer"] },
   { name: "Payments",        href: "/dashboard/payments",    icon: Banknote,  roles: ["owner", "admin", "staff"] },
   { name: "Leads",           href: "/dashboard/leads",       icon: UserPlus,  roles: ["owner", "admin", "staff"] },
+  { name: "Amenities",       href: "/dashboard/amenities",   icon: Sparkles,  roles: ["owner", "admin"] },
   { name: "Reports",         href: "/dashboard/reports",     icon: BarChart3, roles: ["owner", "admin"] },
-  { name: "Settings",        href: "/dashboard/settings",    icon: Settings,  roles: ["owner", "admin"] },
 ];
 
 // ── Notification type → icon + color ─────────────────────────────────────────
@@ -274,6 +275,8 @@ export default function DashboardLayout({
   }
 
   const userRoles = gymContext?.roles || [];
+  const isTrainer = userRoles.includes("trainer" as ParticipantRole);
+  const isMember = userRoles.includes("member" as ParticipantRole);
   const filteredNavigation = navigation.filter((item) =>
     isGroup(item)
       ? item.children.some((c) => c.roles.some((r) => userRoles.includes(r as ParticipantRole)))
@@ -326,25 +329,13 @@ export default function DashboardLayout({
           <span className="text-base font-bold gradient-text">Gym Pilot</span>
         </div>
 
-        {/* Gym pill */}
+        {/* Gym pill — inline switcher */}
         <div className="px-3 py-3 flex-shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <div
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2.5"
-            style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.14)" }}
-          >
-            <div
-              className="h-7 w-7 rounded-md flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(16,185,129,0.15)" }}
-            >
-              <Building2 className="h-3.5 w-3.5" style={{ color: "#10b981" }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate text-foreground">{gymContext.gym_name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">
-                {userRoles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
-              </p>
-            </div>
-          </div>
+          <GymSwitcherPill
+            gymContext={gymContext}
+            rgb="16,185,129"
+            roleLabel={userRoles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
+          />
         </div>
 
         {/* Nav links */}
@@ -413,6 +404,30 @@ export default function DashboardLayout({
             );
           })}
         </nav>
+
+        {/* Footer — portal switchers (if applicable) */}
+        {(isTrainer || isMember) && (
+          <div className="p-3 flex-shrink-0" style={{ borderTop: "1px solid hsl(var(--border))" }}>
+            {isTrainer && (
+              <Link
+                href="/trainer/dashboard"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-150 mb-1"
+              >
+                <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                <span>Switch to Trainer Portal</span>
+              </Link>
+            )}
+            {isMember && (
+              <Link
+                href="/member/dashboard"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-150"
+              >
+                <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                <span>Switch to Member Portal</span>
+              </Link>
+            )}
+          </div>
+        )}
       </aside>
 
       {/* ── Main ──────────────────────────────────────────────────────── */}
@@ -457,9 +472,6 @@ export default function DashboardLayout({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings">Gym Settings</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/select-gym">Switch Gym</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
