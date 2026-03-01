@@ -14,6 +14,7 @@ import type {
   PTSessionCompleteRequest,
   PTSessionCreateRequest,
   PTSessionListParams,
+  PTSessionLogRequest,
   TrainerProfileUpdateRequest,
 } from "@/types/api";
 import { useAuth } from "./use-auth";
@@ -258,6 +259,18 @@ export function useCreateSession() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "sessions"] });
       queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "schedule"] });
+    },
+  });
+}
+
+export function useLogSession() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: PTSessionLogRequest) => ptApi.logSession(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "sessions"] });
+      queryClient.invalidateQueries({ queryKey: [...trainerPortalKeys.all, "clients"] });
     },
   });
 }

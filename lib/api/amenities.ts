@@ -17,4 +17,10 @@ export const amenitiesApi = {
 
   removeFromGym: (amenityId: string) =>
     apiClient.delete(`/amenities/gym/${amenityId}`).then((r) => r.data),
+
+  createAndAdd: (name: string) =>
+    apiClient.post<AmenityResponse>("/amenities/gym/custom", { name }).then((r) => r.data),
+
+  update: (id: string, name: string) =>
+    apiClient.patch<AmenityResponse>(`/amenities/${id}`, { name }).then((r) => r.data),
 };

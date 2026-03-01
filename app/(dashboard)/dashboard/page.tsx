@@ -609,10 +609,10 @@ export default function DashboardPage() {
             {[
               { label: "Add Member", icon: UserPlus, color: "#10b981", bg: "rgba(16,185,129,0.12)", onClick: () => setShowAddMember(true) },
               { label: "Create Plan", icon: CreditCard, color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", onClick: () => setShowAddPlan(true) },
-              { label: "Schedule Class", icon: Calendar, color: "#f59e0b", bg: "rgba(245,158,11,0.12)", onClick: undefined },
-              { label: "Add Payment", icon: DollarSign, color: "#3b82f6", bg: "rgba(59,130,246,0.12)", onClick: undefined },
+              { label: "Schedule Class", icon: Calendar, color: "#f59e0b", bg: "rgba(245,158,11,0.12)", href: "/dashboard/classes" },
+              { label: "Add Payment", icon: DollarSign, color: "#3b82f6", bg: "rgba(59,130,246,0.12)", href: "/dashboard/payments" },
               { label: "Attendance", icon: Activity, color: "#ec4899", bg: "rgba(236,72,153,0.12)", href: "/dashboard/reports/attendance" },
-              { label: "Send Notice", icon: Send, color: "#06b6d4", bg: "rgba(6,182,212,0.12)", onClick: undefined },
+              { label: "Send Notice", icon: Send, color: "#06b6d4", bg: "rgba(6,182,212,0.12)", href: "/dashboard/notifications" },
             ].map(({ label, icon: Icon, color, bg, onClick, href }: any) => {
               const tile = (
                 <div className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all hover:-translate-y-0.5 cursor-pointer"

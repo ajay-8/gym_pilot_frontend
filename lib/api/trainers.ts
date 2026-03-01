@@ -14,6 +14,7 @@ import type {
   MarkCommissionPaidRequest,
   TrainerProfileResponse,
   TrainerProfileUpdateRequest,
+  TrainerPublicProfile,
   AvailabilityUpdateRequest,
   ScheduleResponse,
 } from "@/types/api";
@@ -101,5 +102,10 @@ export const trainersApi = {
       .get<ScheduleResponse>(`/trainers/gyms/${gymId}/trainers/${trainerId}/schedule`, {
         params: { date_from: dateFrom, date_to: dateTo },
       })
+      .then((r) => r.data),
+
+  getPublicProfile: (gymId: string, trainerId: string) =>
+    apiClient
+      .get<TrainerPublicProfile>(`/trainers/gyms/${gymId}/trainers/${trainerId}/public`)
       .then((r) => r.data),
 };

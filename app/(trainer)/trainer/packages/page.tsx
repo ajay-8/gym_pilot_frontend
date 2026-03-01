@@ -90,7 +90,7 @@ function PackageDialog({ open, onClose, existing }: PackageDialogProps) {
   const [sessionCount, setSessionCount] = useState(existing?.session_count?.toString() ?? "");
   const [expiryDays, setExpiryDays] = useState(existing?.expiry_days?.toString() ?? "");
   const [price, setPrice] = useState(existing ? Number(existing.price).toString() : "");
-  const [currency, setCurrency] = useState(existing?.currency ?? "USD");
+  const [currency, setCurrency] = useState(existing?.currency ?? "INR");
 
   const isPending = createPkg.isPending || updatePkg.isPending;
 
@@ -127,7 +127,7 @@ function PackageDialog({ open, onClose, existing }: PackageDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{existing ? "Edit Package" : "New Package"}</DialogTitle>
         </DialogHeader>
@@ -208,7 +208,7 @@ function PackageDialog({ open, onClose, existing }: PackageDialogProps) {
                 min="1"
                 value={expiryDays}
                 onChange={(e) => setExpiryDays(e.target.value)}
-                placeholder="e.g. 30 (leave blank = no expiry)"
+                placeholder="e.g. 30 (blank = no expiry)"
                 className="mt-1"
               />
             </div>
@@ -236,7 +236,7 @@ function PackageDialog({ open, onClose, existing }: PackageDialogProps) {
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                 maxLength={3}
-                placeholder="USD"
+                placeholder="INR"
                 className="mt-1"
               />
             </div>

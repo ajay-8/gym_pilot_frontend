@@ -5,6 +5,8 @@ import type {
   PTPackageCreateRequest,
   PTPackageListParams,
   PTPackageListResponse,
+  PTPackagePurchaseCreateRequest,
+  PTPackagePurchaseResponse,
   PTPackageResponse,
   PTPackageUpdateRequest,
   PTSessionCancelRequest,
@@ -12,6 +14,7 @@ import type {
   PTSessionCreateRequest,
   PTSessionListParams,
   PTSessionListResponse,
+  PTSessionLogRequest,
   PTSessionResponse,
   PTSessionUpdateRequest,
 } from "@/types/api";
@@ -76,6 +79,11 @@ export const ptApi = {
       .post<PTSessionResponse>(`/pt/sessions/${id}/complete`, payload)
       .then((r) => r.data),
 
+  logSession: (payload: PTSessionLogRequest) =>
+    apiClient
+      .post<PTSessionResponse>("/pt/sessions/log", payload)
+      .then((r) => r.data),
+
   markNoShow: (id: string) =>
     apiClient
       .post(`/pt/sessions/${id}/no-show`)
@@ -86,5 +94,10 @@ export const ptApi = {
   listMyClients: (params: PTClientListParams = {}) =>
     apiClient
       .get<PTClientListResponse>("/pt/clients", { params })
+      .then((r) => r.data),
+
+  purchasePackage: (packageId: string, payload: PTPackagePurchaseCreateRequest) =>
+    apiClient
+      .post<PTPackagePurchaseResponse>(`/pt/packages/${packageId}/purchase`, payload)
       .then((r) => r.data),
 };

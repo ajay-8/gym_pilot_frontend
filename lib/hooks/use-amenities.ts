@@ -36,3 +36,25 @@ export function useRemoveGymAmenity() {
     onSuccess: () => qc.invalidateQueries({ queryKey: amenityKeys.gym() }),
   });
 }
+
+export function useUpdateAmenity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => amenitiesApi.update(id, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: amenityKeys.gym() });
+      qc.invalidateQueries({ queryKey: amenityKeys.catalog() });
+    },
+  });
+}
+
+export function useCreateAndAddAmenity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => amenitiesApi.createAndAdd(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: amenityKeys.gym() });
+      qc.invalidateQueries({ queryKey: amenityKeys.catalog() });
+    },
+  });
+}

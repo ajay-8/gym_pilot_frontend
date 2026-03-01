@@ -6,6 +6,9 @@ import type {
   PaymentRefundRequest,
   PaymentReceiptResponse,
   PaymentListParams,
+  RazorpayOrderCreateRequest,
+  RazorpayOrderResponse,
+  RazorpayPaymentVerifyRequest,
 } from "@/types/api";
 
 export const paymentsApi = {
@@ -32,5 +35,17 @@ export const paymentsApi = {
   getReceipt: (paymentId: string) =>
     apiClient
       .get<PaymentReceiptResponse>(`/payments/${paymentId}/receipt`)
+      .then((r) => r.data),
+
+  // ── Razorpay / Mock payment gateway ──────────────────────────────────────────
+
+  createOrder: (payload: RazorpayOrderCreateRequest) =>
+    apiClient
+      .post<RazorpayOrderResponse>("/payments/razorpay/create-order", payload)
+      .then((r) => r.data),
+
+  verifyPayment: (payload: RazorpayPaymentVerifyRequest) =>
+    apiClient
+      .post<PaymentResponse>("/payments/razorpay/verify-payment", payload)
       .then((r) => r.data),
 };

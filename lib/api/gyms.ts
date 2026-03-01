@@ -1,5 +1,6 @@
 import apiClient from "./client";
 import {
+  GymCreateRequest,
   GymOnboardRequest,
   GymOnboardResponse,
   GymListResponse,
@@ -11,6 +12,12 @@ export const gymsApi = {
   // Onboard a new gym (public endpoint - no auth required)
   onboard: async (payload: GymOnboardRequest): Promise<GymOnboardResponse> => {
     const { data } = await apiClient.post<GymOnboardResponse>("/gyms/onboard", payload);
+    return data;
+  },
+
+  // Create a new gym for the current authenticated user (becomes owner)
+  createGym: async (payload: GymCreateRequest): Promise<GymResponse> => {
+    const { data } = await apiClient.post<GymResponse>("/gyms/create", payload);
     return data;
   },
 
