@@ -17,23 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useProfile, useProfileUpdate, useChangePassword } from "@/lib/hooks/use-profile";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function initials(first: string | null | undefined, last: string | null | undefined) {
-  const f = (first ?? "").trim()[0] ?? "";
-  const l = (last ?? "").trim()[0] ?? "";
-  return (f + l).toUpperCase() || "?";
-}
+import { fmtDate, initials } from "@/lib/utils/formatting";
 
 // ── Alert ─────────────────────────────────────────────────────────────────────
 

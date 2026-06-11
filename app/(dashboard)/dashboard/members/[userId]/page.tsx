@@ -289,7 +289,7 @@ export default function MemberDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight gradient-text">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">
               {member.first_name} {member.last_name}
             </h1>
             <p className="text-muted-foreground mt-1">Gym Participant Details</p>

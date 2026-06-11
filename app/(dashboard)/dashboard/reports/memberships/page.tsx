@@ -88,7 +88,7 @@ export default function MembershipReportPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight gradient-text">Membership Report</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Membership Report</h1>
         <p className="text-muted-foreground mt-1">
           Comprehensive overview of membership status, distribution, and trends
         </p>

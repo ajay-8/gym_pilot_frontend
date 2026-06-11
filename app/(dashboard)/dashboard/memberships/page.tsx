@@ -57,6 +57,8 @@ function formatDuration(days?: number): string {
   return `${days} Days`;
 }
 
+const PAGE_SIZE = 20;
+
 // Color palette for plan cards (cycles through)
 const planColors = [
   { bar: "stat-bar-green", iconBg: "rgba(16, 185, 129, 0.12)", iconColor: "#10b981", priceColor: "#10b981" },
@@ -71,7 +73,7 @@ export default function MembershipPlansPage() {
   const [editingPlan, setEditingPlan] = useState<MembershipPlanResponse | null>(null);
   const [deletingPlan, setDeletingPlan] = useState<MembershipPlanResponse | null>(null);
 
-  const { data, isLoading, error } = useMembershipPlans({ page, page_size: 20 });
+  const { data, isLoading, error } = useMembershipPlans({ page, page_size: PAGE_SIZE });
   const deletePlan = useMembershipPlanDelete();
 
   const handleEdit = (plan: MembershipPlanResponse) => {
@@ -110,9 +112,9 @@ export default function MembershipPlansPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight gradient-text">Membership Plans</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Membership Plans</h1>
           <p className="text-muted-foreground mt-1">Manage your gym's membership plans and pricing</p>
         </div>
         <Button onClick={() => setShowAddDialog(true)}>
@@ -243,18 +245,19 @@ export default function MembershipPlansPage() {
             {data.total_pages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  Page {data.page} of {data.total_pages}
+                  Showing {Math.min((page - 1) * PAGE_SIZE + 1, data.total)}–{Math.min(page * PAGE_SIZE, data.total)} of {data.total} plan{data.total !== 1 ? "s" : ""}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    <ChevronLeft className="h-4 w-4" />
                     Previous
                   </Button>
+                  <span className="text-sm text-muted-foreground px-1">{page} / {data.total_pages}</span>
                   <Button
                     variant="outline"
                     size="sm"
@@ -262,7 +265,7 @@ export default function MembershipPlansPage() {
                     disabled={page === data.total_pages}
                   >
                     Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

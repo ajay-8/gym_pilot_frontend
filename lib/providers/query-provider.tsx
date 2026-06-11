@@ -2,34 +2,58 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
+// ── DevTools context ───────────────────────────────────────────────────────────
+const DevToolsContext = createContext<{
+  devToolsActive: boolean;
+  toggleDevTools: () => void;
+}>({
+  devToolsActive: false,
+  toggleDevTools: () => {},
+});
+
+export function useDevTools() {
+  return useContext(DevToolsContext);
+}
+
+// ── Provider ──────────────────────────────────────────────────────────────────
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Stale time: data is fresh for 30 seconds
             staleTime: 30 * 1000,
-            // Retry failed requests 1 time
             retry: 1,
-            // Refetch on window focus in production only
             refetchOnWindowFocus: process.env.NODE_ENV === "production",
           },
           mutations: {
-            // Retry failed mutations 0 times
             retry: 0,
           },
         },
       })
   );
 
+  const [devToolsActive, setDevToolsActive] = useState(false);
+  // Incrementing key forces a fresh mount (reopens panel) each time user toggles on
+  const [mountKey, setMountKey] = useState(0);
+
+  const toggleDevTools = useCallback(() => {
+    setDevToolsActive((prev) => {
+      if (!prev) setMountKey((k) => k + 1); // fresh mount on open
+      return !prev;
+    });
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      {/* Show devtools in development */}
-      {process.env.NODE_ENV === "development" && <ReactQueryDevtools initialIsOpen={false} />}
-    </QueryClientProvider>
+    <DevToolsContext.Provider value={{ devToolsActive, toggleDevTools }}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        {process.env.NODE_ENV === "development" && devToolsActive && (
+          <ReactQueryDevtools key={mountKey} initialIsOpen={true} />
+        )}
+      </QueryClientProvider>
+    </DevToolsContext.Provider>
   );
 }

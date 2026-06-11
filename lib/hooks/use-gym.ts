@@ -10,6 +10,7 @@ export function useCurrentGym() {
   return useQuery({
     queryKey: gymKeys.current,
     queryFn: () => gymApi.getCurrent(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

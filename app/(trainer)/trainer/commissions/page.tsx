@@ -1,6 +1,7 @@
 "use client";
 
 import { useMyCommissionSummary, useMyCommissions } from "@/lib/hooks/use-trainer-portal";
+import { fmtDate } from "@/lib/utils/formatting";
 import type { CommissionSummaryItem } from "@/types/api";
 import { DollarSign, Clock, CheckCircle2, Loader2, TrendingUp } from "lucide-react";
 import {
@@ -11,10 +12,6 @@ import {
 
 function fmtINR(val: string | number | undefined) {
   return `₹${Number(val ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function fmtPeriod(yyyyMM: string) {

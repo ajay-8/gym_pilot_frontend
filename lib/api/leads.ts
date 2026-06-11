@@ -8,13 +8,19 @@ import {
   LeadListParams,
   LeadListResponse,
   LeadResponse,
+  LeadStatsResponse,
 } from "@/types/api";
 
 export const leadsApi = {
+  stats: async (): Promise<LeadStatsResponse> => {
+    const { data } = await apiClient.get<LeadStatsResponse>("/leads/stats");
+    return data;
+  },
+
   list: async (params: LeadListParams = {}): Promise<LeadListResponse> => {
-    const { page = 1, per_page = 50, status, source } = params;
+    const { page = 1, per_page = 25, status, source, search } = params;
     const { data } = await apiClient.get<LeadListResponse>("/leads", {
-      params: { page, per_page, status: status || undefined, source: source || undefined },
+      params: { page, per_page, status: status || undefined, source: source || undefined, search: search || undefined },
     });
     return data;
   },

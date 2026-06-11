@@ -1,33 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
-  ArrowLeft, RefreshCw, Search, ChevronRight, X, Calendar, CheckCircle, AlertCircle, Clock,
+  ArrowLeft, RefreshCw, Search, ChevronLeft, ChevronRight, X, Calendar, CheckCircle, AlertCircle, Clock, Bell,
 } from "lucide-react";
-import { useMembers, useMembershipRenew } from "@/lib/hooks/use-members";
+import { Button } from "@/components/ui/button";
+import { useMembers, useMembershipRenew, useMemberRemind } from "@/lib/hooks/use-members";
+import { fmtDate, initials } from "@/lib/utils/formatting";
 import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
 import { useDashboard } from "@/lib/hooks/use-reports";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function fmtDate(d: string) {
-  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
-
 function daysUntil(d: string): number {
-  return Math.ceil((new Date(d + "T23:59:59").getTime() - Date.now()) / 86400000);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [y, mo, day] = d.split("-").map(Number);
+  const end = new Date(y, mo - 1, day);
+  return Math.round((end.getTime() - today.getTime()) / 86400000);
 }
 
 function daysSince(d: string): number {
   return Math.floor((Date.now() - new Date(d + "T00:00:00").getTime()) / 86400000);
 }
 
-function initials(name: string) {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-}
+const PAGE_SIZE = 20;
 
 // ── Renew Dialog ──────────────────────────────────────────────────────────────
 
@@ -163,9 +162,12 @@ interface MemberCardProps {
   startDate?: string | null;
   badge: "expiring" | "expired";
   onRenew: (userId: string, name: string, planName: string | null) => void;
+  onRemind: (userId: string, name: string) => void;
+  remindedIds: Set<string>;
+  remindingId: string | null;
 }
 
-function MemberCard({ userId, name, planName, endDate, startDate, badge, onRenew }: MemberCardProps) {
+function MemberCard({ userId, name, planName, endDate, startDate, badge, onRenew, onRemind, remindedIds, remindingId }: MemberCardProps) {
   const days = endDate
     ? badge === "expiring" ? daysUntil(endDate) : daysSince(endDate)
     : null;
@@ -187,6 +189,9 @@ function MemberCard({ userId, name, planName, endDate, startDate, badge, onRenew
     ? days === 0 ? "Today" : `${days}d ago`
     : days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days}d left`;
 
+  const reminded = remindedIds.has(userId);
+  const isReminding = remindingId === userId;
+
   return (
     <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.02]"
       style={{ borderBottom: "1px solid hsl(var(--border)/0.6)" }}>
@@ -197,7 +202,7 @@ function MemberCard({ userId, name, planName, endDate, startDate, badge, onRenew
           style={{ background: accentColor, opacity: 0.7 }} />
         <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
           style={{ background: `${accentColor}18`, color: accentColor }}>
-          {initials(name)}
+          {initials(name.split(" ")[0], name.split(" ")[1])}
         </div>
       </div>
 
@@ -238,14 +243,33 @@ function MemberCard({ userId, name, planName, endDate, startDate, badge, onRenew
         </span>
       )}
 
-      {/* Renew button */}
-      <button
-        onClick={() => onRenew(userId, name, planName)}
-        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
-        style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
-        <RefreshCw className="h-3 w-3" />
-        Renew
-      </button>
+      {/* Action buttons */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Remind button — only for expired members */}
+        {badge === "expired" && (
+          <button
+            onClick={() => onRemind(userId, name)}
+            disabled={isReminding || reminded}
+            title={reminded ? "Reminder already sent today (1 per day limit)" : "Send renewal reminder"}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+            style={reminded
+              ? { background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }
+              : { background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }
+            }>
+            <Bell className="h-3 w-3" />
+            {isReminding ? "…" : reminded ? "Sent" : "Remind"}
+          </button>
+        )}
+
+        {/* Renew button */}
+        <button
+          onClick={() => onRenew(userId, name, planName)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white transition-all hover:opacity-90 active:scale-95"
+          style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
+          <RefreshCw className="h-3 w-3" />
+          Renew
+        </button>
+      </div>
     </div>
   );
 }
@@ -292,24 +316,57 @@ function Section({ title, count, label, color, bgColor, icon, children, footer }
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function RenewalsPage() {
+  const searchParams = useSearchParams();
+  // ?days=N passed from dashboard "View All" — show only expiring section
+  const daysParam = searchParams.get("days");
+  const expiringOnlyMode = daysParam !== null;
+  const expiringDaysFilter = daysParam ? Math.max(1, Math.min(30, Number(daysParam))) : 30;
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [renewTarget, setRenewTarget] = useState<{
     userId: string; name: string; planName: string | null;
   } | null>(null);
   const [successIds, setSuccessIds] = useState<Set<string>>(new Set());
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(new Set());
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Seed remindedIds from localStorage on mount (persists across page reloads)
+  useEffect(() => {
+    const now = Date.now();
+    const seeded = new Set<string>();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("gp_remind_")) {
+        const expiry = Number(localStorage.getItem(key));
+        if (expiry > now) {
+          seeded.add(key.slice("gp_remind_".length));
+        } else {
+          localStorage.removeItem(key); // clean up expired entries
+        }
+      }
+    }
+    if (seeded.size > 0) setRemindedIds(seeded);
+  }, []);
 
   const { data: dash } = useDashboard();
+  const remind = useMemberRemind();
   const { data: expiredData, isLoading: expiredLoading } = useMembers({
     status: "expired",
     page,
-    page_size: 20,
-    search: search || undefined,
+    page_size: PAGE_SIZE,
+    search: debouncedSearch || undefined,
   });
 
   const expiringSoon = (dash?.expiring_soon_members ?? []).filter(
     m => !successIds.has(m.user_id) &&
-      daysUntil(String(m.end_date)) <= 7 &&
+      daysUntil(String(m.end_date)) <= expiringDaysFilter &&
       (!search || m.name.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -325,43 +382,70 @@ export default function RenewalsPage() {
     if (renewTarget) setSuccessIds(prev => new Set(prev).add(renewTarget.userId));
   };
 
+  const handleRemind = async (userId: string, _name: string) => {
+    setRemindingId(userId);
+    try {
+      const result = await remind.mutateAsync(userId);
+      // Mark as reminded whether sent or rate-limited — either way button should lock
+      if (result.sent || result.reason === "rate_limited") {
+        setRemindedIds(prev => new Set(prev).add(userId));
+        // Persist for 24h so button stays locked across page reloads
+        localStorage.setItem(`gp_remind_${userId}`, String(Date.now() + 86400000));
+      }
+    } catch {
+      // fire-and-forget — silently fail on network error
+    } finally {
+      setRemindingId(null);
+    }
+  };
+
   const totalNeedRenewal = expiringSoon.length + (expiredData?.total ?? 0);
+
+  // Page title adapts to mode
+  const pageTitle = expiringOnlyMode
+    ? `Expiring in ${expiringDaysFilter} Days`
+    : "Membership Renewals";
+  const pageSubtitle = expiringOnlyMode
+    ? `${expiringSoon.length} member${expiringSoon.length !== 1 ? "s" : ""} expiring soon`
+    : totalNeedRenewal > 0
+      ? `${totalNeedRenewal} members need attention`
+      : "All memberships are active";
 
   return (
     <div className="space-y-5">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/members"
+        <Link href={expiringOnlyMode ? "/dashboard" : "/dashboard/members"}
           className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
           style={{ border: "1px solid hsl(var(--border))" }}>
           <ArrowLeft className="h-4 w-4 text-muted-foreground" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-base font-bold text-foreground leading-tight">Membership Renewals</h1>
-          <p className="text-[11px] text-muted-foreground">
-            {totalNeedRenewal > 0 ? `${totalNeedRenewal} members need attention` : "All memberships are active"}
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">{pageTitle}</h1>
+          <p className="text-[11px] text-muted-foreground">{pageSubtitle}</p>
         </div>
       </div>
 
-      {/* ── Summary chips ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
-          <Clock className="h-3 w-3" style={{ color: "#f59e0b" }} />
-          <span className="text-[11px] font-semibold" style={{ color: "#f59e0b" }}>
-            {expiringSoon.length} expiring this week
-          </span>
+      {/* ── Summary chips (full mode only) ──────────────────────────────── */}
+      {!expiringOnlyMode && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+            style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+            <Clock className="h-3 w-3" style={{ color: "#f59e0b" }} />
+            <span className="text-[11px] font-semibold" style={{ color: "#f59e0b" }}>
+              {expiringSoon.length} expiring this week
+            </span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <AlertCircle className="h-3 w-3" style={{ color: "#ef4444" }} />
+            <span className="text-[11px] font-semibold" style={{ color: "#ef4444" }}>
+              {expiredData?.total ?? 0} expired
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-          <AlertCircle className="h-3 w-3" style={{ color: "#ef4444" }} />
-          <span className="text-[11px] font-semibold" style={{ color: "#ef4444" }}>
-            {expiredData?.total ?? 0} expired
-          </span>
-        </div>
-      </div>
+      )}
 
       {/* ── Search ──────────────────────────────────────────────────────── */}
       <div className="relative">
@@ -370,7 +454,7 @@ export default function RenewalsPage() {
           type="text"
           placeholder="Search by member name…"
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          onChange={e => setSearch(e.target.value)}
           className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground"
           style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
         />
@@ -381,7 +465,7 @@ export default function RenewalsPage() {
         <Section
           title="Expiring Soon"
           count={expiringSoon.length}
-          label="Within 7 days"
+          label={expiringOnlyMode ? `Within ${expiringDaysFilter} days` : "Within 7 days"}
           color="#f59e0b"
           bgColor="rgba(245,158,11,0.05)"
           icon={<Calendar className="h-3.5 w-3.5" style={{ color: "#f59e0b" }} />}
@@ -395,70 +479,88 @@ export default function RenewalsPage() {
               endDate={String(m.end_date)}
               badge="expiring"
               onRenew={openRenewDialog}
+              onRemind={handleRemind}
+              remindedIds={remindedIds}
+              remindingId={remindingId}
             />
           ))}
         </Section>
       )}
 
-      {/* ── Section 2: Expired ───────────────────────────────────────────── */}
-      <Section
-        title="Expired"
-        count={expiredData?.total ?? 0}
-        label="Membership ended"
-        color="#ef4444"
-        bgColor="rgba(239,68,68,0.05)"
-        icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: "#ef4444" }} />}
-        footer={
-          expiredData && expiredData.total_pages > 1 ? (
-            <div className="flex items-center justify-between px-4 py-3"
-              style={{ borderTop: "1px solid hsl(var(--border))" }}>
-              <p className="text-[11px] text-muted-foreground">
-                Page {expiredData.page} of {expiredData.total_pages} · {expiredData.total} total
-              </p>
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
-                  <ArrowLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-                <span className="text-[11px] text-muted-foreground px-1">{page}</span>
-                <button onClick={() => setPage(p => Math.min(expiredData.total_pages, p + 1))}
-                  disabled={page === expiredData.total_pages}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
+      {expiringSoon.length === 0 && expiringOnlyMode && (
+        <div className="rounded-2xl py-12 text-center"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <CheckCircle className="h-8 w-8 mx-auto mb-2" style={{ color: "#10b981", opacity: 0.5 }} />
+          <p className="text-sm font-semibold text-foreground mb-0.5">
+            {search ? "No results found" : "No memberships expiring soon"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {search ? "Try a different search term" : `No members expiring within ${expiringDaysFilter} days`}
+          </p>
+        </div>
+      )}
+
+      {/* ── Section 2: Expired (hidden in expiring-only mode) ────────────── */}
+      {!expiringOnlyMode && (
+        <Section
+          title="Lapsed Members"
+          count={expiredData?.total ?? 0}
+          label="Membership ended"
+          color="#ef4444"
+          bgColor="rgba(239,68,68,0.05)"
+          icon={<AlertCircle className="h-3.5 w-3.5" style={{ color: "#ef4444" }} />}
+          footer={
+            expiredData && expiredData.total_pages > 1 ? (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Showing {Math.min((page - 1) * PAGE_SIZE + 1, expiredData.total)}–{Math.min(page * PAGE_SIZE, expiredData.total)} of {expiredData.total} member{expiredData.total !== 1 ? "s" : ""}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-1">{page} / {expiredData.total_pages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(expiredData.total_pages, p + 1))} disabled={page === expiredData.total_pages}>
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+            ) : null
+          }
+        >
+          {expiredLoading ? (
+            <div className="py-10 text-center text-xs text-muted-foreground">Loading…</div>
+          ) : expiredMembers.length === 0 ? (
+            <div className="py-10 text-center">
+              <CheckCircle className="h-8 w-8 mx-auto mb-2" style={{ color: "#10b981", opacity: 0.5 }} />
+              <p className="text-sm font-semibold text-foreground mb-0.5">
+                {search ? "No results found" : "No lapsed members"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {search ? "Try a different search term" : "All members have active memberships"}
+              </p>
             </div>
-          ) : null
-        }
-      >
-        {expiredLoading ? (
-          <div className="py-10 text-center text-xs text-muted-foreground">Loading…</div>
-        ) : expiredMembers.length === 0 ? (
-          <div className="py-10 text-center">
-            <CheckCircle className="h-8 w-8 mx-auto mb-2" style={{ color: "#10b981", opacity: 0.5 }} />
-            <p className="text-sm font-semibold text-foreground mb-0.5">
-              {search ? "No results found" : "No expired memberships"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {search ? "Try a different search term" : "All members have active memberships"}
-            </p>
-          </div>
-        ) : (
-          expiredMembers.map(m => (
-            <MemberCard
-              key={m.user_id}
-              userId={m.user_id}
-              name={[m.first_name, m.last_name].filter(Boolean).join(" ") || "Unknown"}
-              planName={null}
-              endDate={m.membership_end_date ?? null}
-              startDate={m.membership_start_date}
-              badge="expired"
-              onRenew={openRenewDialog}
-            />
-          ))
-        )}
-      </Section>
+          ) : (
+            expiredMembers.map(m => (
+              <MemberCard
+                key={m.user_id}
+                userId={m.user_id}
+                name={[m.first_name, m.last_name].filter(Boolean).join(" ") || "Unknown"}
+                planName={null}
+                endDate={m.membership_end_date ?? null}
+                startDate={m.membership_start_date}
+                badge="expired"
+                onRenew={openRenewDialog}
+                onRemind={handleRemind}
+                remindedIds={remindedIds}
+                remindingId={remindingId}
+              />
+            ))
+          )}
+        </Section>
+      )}
 
       {/* ── Renew Dialog ─────────────────────────────────────────────────── */}
       {renewTarget && (

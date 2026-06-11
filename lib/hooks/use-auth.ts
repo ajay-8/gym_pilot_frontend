@@ -48,13 +48,16 @@ export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: authApi.login,
-    onSuccess: async (data) => {
+    mutationFn: ({ email, password }: { email: string; password: string; rememberMe?: boolean }) =>
+      authApi.login({ email, password }),
+    onSuccess: async (data, variables) => {
+      const rememberMe = variables.rememberMe ?? true;
+
       // Clear any persisted gym context from previous session
       setGymContext(null);
 
       // Store access token and fetch user info
-      setAuth({ id: "", email: "" } as any, data.access_token);
+      setAuth({ id: "", email: "" } as any, data.access_token, rememberMe);
       const userInfo = await authApi.getMe();
       setAuth(userInfo.user, data.access_token);
       queryClient.invalidateQueries({ queryKey: authKeys.all });

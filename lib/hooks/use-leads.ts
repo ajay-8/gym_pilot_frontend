@@ -12,6 +12,7 @@ import { useAuth } from "./use-auth";
 
 export const leadKeys = {
   all: ["leads"] as const,
+  stats: (gymId: string | undefined) => [...leadKeys.all, "stats", gymId] as const,
   lists: () => [...leadKeys.all, "list"] as const,
   list: (gymId: string | undefined, params: LeadListParams) =>
     [...leadKeys.lists(), gymId, params] as const,
@@ -19,6 +20,16 @@ export const leadKeys = {
   detail: (gymId: string | undefined, id: string) =>
     [...leadKeys.details(), gymId, id] as const,
 };
+
+export function useLeadsStats() {
+  const { gymContext } = useAuth();
+
+  return useQuery({
+    queryKey: leadKeys.stats(gymContext?.gym_id),
+    queryFn: () => leadsApi.stats(),
+    enabled: !!gymContext?.gym_id,
+  });
+}
 
 export function useLeads(params: LeadListParams = {}) {
   const { gymContext } = useAuth();
@@ -46,7 +57,7 @@ export function useLeadCreate() {
   return useMutation({
     mutationFn: (payload: LeadCreateRequest) => leadsApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.all });
       queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
     },
   });
@@ -59,7 +70,7 @@ export function useLeadUpdate() {
     mutationFn: ({ leadId, payload }: { leadId: string; payload: LeadUpdateRequest }) =>
       leadsApi.update(leadId, payload),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.all });
       queryClient.setQueryData(leadKeys.detail(undefined, data.id), data);
     },
   });
@@ -71,7 +82,7 @@ export function useLeadDelete() {
   return useMutation({
     mutationFn: (leadId: string) => leadsApi.delete(leadId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.all });
       queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
     },
   });
@@ -97,7 +108,7 @@ export function useLeadMarkLost() {
     mutationFn: ({ leadId, payload }: { leadId: string; payload: LeadMarkLostRequest }) =>
       leadsApi.markLost(leadId, payload),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.all });
       queryClient.setQueryData(leadKeys.detail(undefined, data.id), data);
     },
   });
@@ -110,9 +121,8 @@ export function useLeadConvert() {
     mutationFn: ({ leadId, payload }: { leadId: string; payload: LeadConvertRequest }) =>
       leadsApi.convert(leadId, payload),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: leadKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: leadKeys.all });
       queryClient.setQueryData(leadKeys.detail(undefined, data.id), data);
-      // Invalidate members + dashboard since a new member was created
       queryClient.invalidateQueries({ queryKey: ["members"] });
       queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
     },

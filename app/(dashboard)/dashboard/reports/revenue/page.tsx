@@ -94,7 +94,7 @@ export default function RevenueAnalyticsPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight gradient-text">Revenue Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Revenue Analytics</h1>
           <p className="text-muted-foreground mt-1">
             Revenue breakdown by payment method and monthly trends
           </p>

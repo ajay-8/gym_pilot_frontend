@@ -77,7 +77,7 @@ export default function MemberAnalyticsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight gradient-text">Member Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Member Analytics</h1>
           <p className="text-muted-foreground mt-1">
             Growth metrics and membership type distribution
           </p>
@@ -281,7 +281,7 @@ export default function MemberAnalyticsPage() {
                       {...darkTooltipStyle}
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       formatter={((value: number | undefined, _name: string, item: any) => [
-                        `${value ?? 0} (${item?.payload?.percentage?.toFixed(1) ?? 0}%)`,
+                        `${value ?? 0} (${Number(item?.payload?.percentage ?? 0).toFixed(1)}%)`,
                         "Active Members",
                       ]) as any}
                     />
@@ -363,7 +363,7 @@ export default function MemberAnalyticsPage() {
                       <div className="flex items-center gap-3 text-sm">
                         <span className="text-muted-foreground">{plan.count} members</span>
                         <span className="font-semibold" style={{ color: plan.fill }}>
-                          {plan.percentage.toFixed(1)}%
+                          {Number(plan.percentage).toFixed(1)}%
                         </span>
                       </div>
                     </div>

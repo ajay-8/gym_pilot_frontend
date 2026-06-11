@@ -2,28 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useMembershipAuditHistory } from "@/lib/hooks/use-members";
 import { Calendar, Clock, User, CreditCard, RefreshCw, Ban, Snowflake, Sun } from "lucide-react";
-
-// Helper function to format date
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-// Helper function to format datetime
-function formatDateTime(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { fmtDate as formatDate, fmtDateTime as formatDateTime } from "@/lib/utils/formatting";
 
 // Helper function to get action badge variant
 function getActionBadgeVariant(

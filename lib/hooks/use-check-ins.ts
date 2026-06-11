@@ -19,6 +19,7 @@ export function useCheckIns(params: CheckInListParams = {}) {
     queryFn: () => checkInsApi.list(params),
     enabled: !!gymId,
     refetchInterval: 30_000, // auto-refresh every 30s for live view
+    refetchIntervalInBackground: false, // pause polling when tab is not visible
   });
 }
 

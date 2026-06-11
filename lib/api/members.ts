@@ -70,6 +70,14 @@ export const membersApi = {
   },
 
   /**
+   * Send membership renewal reminder via SMS/WhatsApp
+   */
+  remindMember: async (userId: string): Promise<{ sent: boolean; reason?: string }> => {
+    const { data } = await apiClient.post<{ sent: boolean; reason?: string }>(`/members/${userId}/remind`);
+    return data;
+  },
+
+  /**
    * Update member details
    */
   update: async (userId: string, payload: MemberUpdateRequest): Promise<MemberDetailResponse> => {
@@ -85,7 +93,7 @@ export const membersApi = {
   },
 
   /**
-   * Get member health records
+   * Get member health records (admin/staff)
    */
   getHealthRecords: async (userId: string): Promise<MemberHealthRecordsResponse> => {
     const { data } = await apiClient.get<MemberHealthRecordsResponse>(`/members/${userId}/health-records`);
@@ -93,7 +101,7 @@ export const membersApi = {
   },
 
   /**
-   * Update member health records
+   * Update member health records (admin/staff)
    */
   updateHealthRecords: async (
     userId: string,
@@ -101,6 +109,27 @@ export const membersApi = {
   ): Promise<MemberHealthRecordsResponse> => {
     const { data } = await apiClient.put<MemberHealthRecordsResponse>(
       `/members/${userId}/health-records`,
+      payload
+    );
+    return data;
+  },
+
+  /**
+   * Get own health records (member self-service)
+   */
+  getMyHealthRecords: async (): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.get<MemberHealthRecordsResponse>(`/members/me/health-records`);
+    return data;
+  },
+
+  /**
+   * Update own health records (member self-service)
+   */
+  updateMyHealthRecords: async (
+    payload: MemberHealthRecordsUpdateRequest
+  ): Promise<MemberHealthRecordsResponse> => {
+    const { data } = await apiClient.put<MemberHealthRecordsResponse>(
+      `/members/me/health-records`,
       payload
     );
     return data;

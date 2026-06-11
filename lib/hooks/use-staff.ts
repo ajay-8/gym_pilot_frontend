@@ -11,5 +11,6 @@ export function useStaff(params: StaffListParams = {}) {
   return useQuery({
     queryKey: staffKeys.list(params),
     queryFn: () => staffApi.list(params),
+    staleTime: 2 * 60 * 1000,
   });
 }

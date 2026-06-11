@@ -5,6 +5,7 @@ import {
   Dumbbell,
   UserPlus,
   X,
+  ChevronLeft,
   ChevronRight,
   Activity,
   Clock,
@@ -26,6 +27,9 @@ import {
   useMarkCommissionPaid,
 } from "@/lib/hooks/use-trainers";
 import { AddPersonDialog, type AddPersonPayload } from "@/components/participants/add-person-dialog";
+import { fmtDate } from "@/lib/utils/formatting";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import type {
   GymTrainerContractResponse,
   WeeklyAvailability,
@@ -55,15 +59,6 @@ function fmtCurrency(val: string | null | undefined, currency = "INR") {
 function fmtRate(val: string | null | undefined) {
   if (!val) return "—";
   return `${parseFloat(val).toFixed(1)}%`;
-}
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -701,6 +696,7 @@ function DetailPanel({ trainer, onClose, onStatusToggle, isToggling, onOffboard,
 
 export default function TrainersPage() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [page, setPage] = useState(1);
   const [selectedTrainer, setSelectedTrainer] = useState<GymTrainerContractResponse | null>(null);
   const [showOnboard, setShowOnboard] = useState(false);
   const [onboardError, setOnboardError] = useState<string | null>(null);
@@ -709,7 +705,8 @@ export default function TrainersPage() {
 
   const { data, isLoading } = useTrainers({
     status: statusFilter,
-    per_page: 100,
+    per_page: 10,
+    page,
   });
 
   const create = useTrainerCreate();
@@ -800,113 +797,151 @@ export default function TrainersPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Trainers</h1>
-          <p className="text-[11px] text-muted-foreground">
-            {data?.total ?? 0} trainer{data?.total !== 1 ? "s" : ""} at your gym
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Trainers</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage trainers, commissions and availability at your gym
           </p>
         </div>
-        <button
-          onClick={() => { setShowOnboard(true); setOnboardError(null); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)" }}
+        <Button onClick={() => { setShowOnboard(true); setOnboardError(null); }}
+          style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", border: "none" }}
+          className="text-white hover:opacity-90"
         >
-          <UserPlus className="h-4 w-4" />
+          <UserPlus className="mr-2 h-4 w-4" />
           Onboard Trainer
-        </button>
+        </Button>
       </div>
 
       {/* ── Stat cards ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div
-          className="rounded-2xl px-4 py-3.5"
-          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className="h-6 w-6 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(139,92,246,0.12)" }}
-            >
-              <Dumbbell className="h-3.5 w-3.5" style={{ color: "#8b5cf6" }} />
-            </div>
-            <p className="text-[11px] text-muted-foreground font-medium">Active Trainers</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{activeCount}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">currently working</p>
-        </div>
-
-        <div
-          className="rounded-2xl px-4 py-3.5"
-          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <div
-              className="h-6 w-6 rounded-lg flex items-center justify-center"
-              style={{ background: "rgba(239,68,68,0.1)" }}
-            >
-              <Users className="h-3.5 w-3.5" style={{ color: "#ef4444" }} />
-            </div>
-            <p className="text-[11px] text-muted-foreground font-medium">Inactive</p>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">not currently active</p>
-        </div>
-      </div>
-
-      {/* ── Filter tabs ────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1.5">
-        {filters.map((f) => (
-          <button
-            key={String(f.value)}
-            onClick={() => setStatusFilter(f.value)}
-            className="px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
-            style={
-              statusFilter === f.value
-                ? { background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }
-                : { background: "hsl(var(--muted)/0.5)", color: "hsl(var(--muted-foreground))" }
-            }
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          { label: "Active Trainers", value: activeCount,   color: "#8b5cf6", Icon: Dumbbell },
+          { label: "Inactive",        value: inactiveCount, color: "#64748b", Icon: Power    },
+        ].map(({ label, value, color, Icon }) => (
+          <div
+            key={label}
+            className="rounded-2xl p-4"
+            style={{ background: "hsl(var(--card))", border: `1px solid ${color}59` }}
           >
-            {f.label}
-          </button>
+            <div className="mb-3">
+              <div
+                className="h-8 w-8 rounded-lg flex items-center justify-center"
+                style={{ background: `${color}2e` }}
+              >
+                <Icon className="h-4 w-4" style={{ color }} />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-3xl font-bold" style={{ color }}>{value}</p>
+          </div>
         ))}
       </div>
 
-      {/* ── Trainers list ───────────────────────────────────────────────── */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-      >
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-muted-foreground">Loading…</div>
-        ) : trainers.length === 0 ? (
-          <div className="py-16 text-center">
-            <div
-              className="h-14 w-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "rgba(139,92,246,0.08)" }}
-            >
-              <Dumbbell className="h-7 w-7" style={{ color: "#8b5cf6" }} />
+      {/* ── Filter + Search ────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(139,92,246,0.1)" }}>
+              <Dumbbell className="h-4 w-4" style={{ color: "#8b5cf6" }} />
             </div>
-            <p className="text-sm font-semibold text-foreground mb-1">No trainers found</p>
-            <p className="text-[11px] text-muted-foreground">
-              {statusFilter
-                ? `No ${statusFilter} trainers.`
-                : "Click 'Onboard Trainer' to add your first trainer."}
-            </p>
+            <div>
+              <CardTitle>Filter Trainers</CardTitle>
+              <CardDescription>Filter by status to find the right trainer.</CardDescription>
+            </div>
           </div>
-        ) : (
-          trainers.map((trainer) => (
-            <TrainerCard
-              key={trainer.id}
-              trainer={trainer}
-              onClick={() => setSelectedTrainer(trainer)}
-            />
-          ))
-        )}
-      </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {filters.map((f) => (
+              <button
+                key={String(f.value)}
+                onClick={() => { setStatusFilter(f.value); setPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                style={
+                  statusFilter === f.value
+                    ? { background: "rgba(139,92,246,0.15)", color: "#8b5cf6" }
+                    : { background: "hsl(var(--muted)/0.5)", color: "hsl(var(--muted-foreground))" }
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Trainers list ───────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(139,92,246,0.1)" }}>
+              <Users className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+            </div>
+            <div>
+              <CardTitle>{statusFilter ? `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Trainers` : "All Trainers"}</CardTitle>
+              <CardDescription>
+                {data ? `${data.total} trainer${data.total === 1 ? "" : "s"}` : "Loading..."}
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading trainers...</div>
+            </div>
+          ) : trainers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+              <Dumbbell className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">No trainers found</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
+                {statusFilter ? `No ${statusFilter} trainers.` : "Click 'Onboard Trainer' to add your first trainer."}
+              </p>
+              {!statusFilter && (
+                <Button onClick={() => { setShowOnboard(true); setOnboardError(null); }}
+                  style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", border: "none" }}
+                  className="text-white hover:opacity-90"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Onboard Trainer
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              {trainers.map((trainer) => (
+                <TrainerCard
+                  key={trainer.id}
+                  trainer={trainer}
+                  onClick={() => setSelectedTrainer(trainer)}
+                />
+              ))}
+              {data && data.total_pages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {Math.min((page - 1) * 10 + 1, data.total)}–{Math.min(page * 10, data.total)} of {data.total} trainer{data.total !== 1 ? "s" : ""}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-1">{page} / {data.total_pages}</span>
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))} disabled={page >= data.total_pages}>
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Detail Panel ────────────────────────────────────────────────── */}
       {selectedTrainer && (
@@ -943,7 +978,7 @@ export default function TrainersPage() {
       {/* ── Toast ───────────────────────────────────────────────────────── */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white max-w-[calc(100vw-3rem)]"
           style={{ background: "linear-gradient(135deg,#8b5cf6,#7c3aed)" }}
         >
           <CheckCircle className="h-4 w-4" />

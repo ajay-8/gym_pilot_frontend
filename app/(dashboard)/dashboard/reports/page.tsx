@@ -66,7 +66,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight gradient-text">Reports & Analytics</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Reports & Analytics</h1>
         <p className="text-muted-foreground mt-1">
           Access comprehensive reports and insights about your gym's performance
         </p>

@@ -78,6 +78,7 @@ export interface StaffListResponse {
 
 export interface StaffListParams {
   search?: string;
+  role?: string;
   page?: number;
   page_size?: number;
 }
@@ -142,6 +143,7 @@ export interface GymCreateRequest {
 export interface GymResponse {
   id: string;
   name: string;
+  slug?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -149,6 +151,10 @@ export interface GymResponse {
   pincode?: number;
   latitude?: number;
   longitude?: number;
+  is_publicly_listed?: boolean;
+  contact_phone?: string;
+  contact_email?: string;
+  website?: string;
   status: StatusType;
   created_at: string;
   updated_at: string;
@@ -399,12 +405,13 @@ export interface ExpiringMember {
   end_date: string; // YYYY-MM-DD
 }
 
-export interface AtRiskMember {
-  participant_id: string;
+
+export interface NewLead {
+  id: string;
   name: string;
+  phone: string;
   plan_name: string | null;
-  last_check_in: string | null; // YYYY-MM-DD, null = never checked in
-  days_since_check_in: number;  // -1 = never checked in
+  created_at: string;
 }
 
 export interface DashboardResponse {
@@ -432,11 +439,15 @@ export interface DashboardResponse {
   // Top members expiring soon (mini drill-down table)
   expiring_soon_members: ExpiringMember[];
 
-  // Members not checked in for 10+ days with active membership
-  at_risk_members: AtRiskMember[];
+  // Members whose last membership expired and have not renewed
+  lapsed_members_count: number;
 
   // Leads created today
   leads_today_count: number;
+
+  // Unactioned new leads for dashboard inbox
+  new_leads: NewLead[];
+  new_leads_count: number;
 
   // New vs renewals this month
   new_members_this_month: number;   // first-time members (joined_at this month)
@@ -691,8 +702,16 @@ export interface LeadConvertRequest {
 export interface LeadListParams {
   status?: string;
   source?: string;
+  search?: string;
   page?: number;
   per_page?: number;
+}
+
+export interface LeadStatsResponse {
+  total: number;
+  new_count: number;
+  converted_count: number;
+  overdue_count: number;
 }
 
 // Check-in Types
@@ -704,6 +723,9 @@ export interface CheckInResponse {
   checked_out_at: string | null;
   notes: string | null;
   created_at: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
 }
 
 export interface CheckInListResponse {
@@ -882,6 +904,8 @@ export interface PaymentResponse {
   payment_metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  first_name: string;
+  last_name: string;
 }
 
 export interface PaymentListResponse {
@@ -1049,6 +1073,7 @@ export interface BookingResponse {
   id: string;
   session_id: string;
   participant_id: string;
+  member_name?: string | null;
   status: BookingStatus;
   booked_at: string;
   cancelled_at: string | null;
@@ -1091,6 +1116,10 @@ export interface GymUpdateRequest {
   state?: string;
   country?: string;
   pincode?: number;
+  is_publicly_listed?: boolean;
+  contact_phone?: string;
+  contact_email?: string;
+  website?: string;
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────

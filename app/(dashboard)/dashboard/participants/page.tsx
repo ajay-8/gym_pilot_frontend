@@ -1,32 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, X, ChevronRight, Users, CheckCircle, ExternalLink } from "lucide-react";
+import { UserPlus, X, ChevronLeft, ChevronRight, Users, CheckCircle, ExternalLink, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAllParticipants } from "@/lib/hooks/use-members";
 import { useTrainerCreate } from "@/lib/hooks/use-trainers";
 import { useMemberOnboard } from "@/lib/hooks/use-members";
 import { AddPersonDialog, type AddPersonPayload } from "@/components/participants/add-person-dialog";
 import type { ParticipantRole, ParticipantSummary } from "@/types/api";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function initials(first: string | null, last: string | null) {
-  return ((first?.[0] ?? "") + (last?.[0] ?? "")).toUpperCase() || "?";
-}
+import { fmtDate, initials, fullName as fmtFullName } from "@/lib/utils/formatting";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 function fullName(p: ParticipantSummary) {
-  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Unnamed";
-}
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  return fmtFullName(p.first_name, p.last_name);
 }
 
 // ── Role badge ─────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 10;
 
 const ROLE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   member:  { bg: "rgba(16,185,129,0.12)",  text: "#10b981", label: "Member" },
@@ -192,6 +186,7 @@ const ROLE_FILTERS: { label: string; value: ParticipantRole | undefined }[] = [
 
 export default function ParticipantsPage() {
   const [roleFilter, setRoleFilter] = useState<ParticipantRole | undefined>(undefined);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedPerson, setSelectedPerson] = useState<ParticipantSummary | null>(null);
@@ -202,7 +197,8 @@ export default function ParticipantsPage() {
   const { data, isLoading } = useAllParticipants({
     search: debouncedSearch || undefined,
     role: roleFilter,
-    page_size: 50,
+    page,
+    page_size: PAGE_SIZE,
   });
 
   const create = useTrainerCreate();
@@ -213,6 +209,7 @@ export default function ParticipantsPage() {
   // Debounce search
   const handleSearch = (val: string) => {
     setSearch(val);
+    setPage(1);
     clearTimeout((window as any).__participantSearchTimeout);
     (window as any).__participantSearchTimeout = setTimeout(() => {
       setDebouncedSearch(val);
@@ -270,147 +267,170 @@ export default function ParticipantsPage() {
   const isPending = create.isPending || onboard.isPending;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Team & Members</h1>
-          <p className="text-[11px] text-muted-foreground">
-            {data?.total ?? 0} people at your gym
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">All Participants</h1>
+          <p className="text-muted-foreground mt-1">
+            Everyone at your gym — members, trainers, staff and owners
           </p>
         </div>
-        <button
-          onClick={() => { setShowAdd(true); setAddError(null); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
-        >
-          <UserPlus className="h-4 w-4" />
+        <Button onClick={() => { setShowAdd(true); setAddError(null); }}>
+          <UserPlus className="mr-2 h-4 w-4" />
           Add Person
-        </button>
+        </Button>
       </div>
 
       {/* ── Search + Role filters ────────────────────────────── */}
-      <div className="space-y-3">
-        <input
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Search by name, email or phone…"
-          className="w-full px-3 py-2 rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground"
-          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-        />
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {ROLE_FILTERS.map((f) => (
-            <button
-              key={String(f.value)}
-              onClick={() => setRoleFilter(f.value)}
-              className="px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
-              style={
-                roleFilter === f.value
-                  ? { background: "rgba(16,185,129,0.15)", color: "#10b981" }
-                  : { background: "hsl(var(--muted)/0.5)", color: "hsl(var(--muted-foreground))" }
-              }
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(16,185,129,0.1)" }}>
+              <Search className="h-4 w-4" style={{ color: "#10b981" }} />
+            </div>
+            <div>
+              <CardTitle>Search & Filter</CardTitle>
+              <CardDescription>Search by name, email or phone. Filter by role.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search participants..."
+              className="pl-10"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {ROLE_FILTERS.map((f) => (
+              <button
+                key={String(f.value)}
+                onClick={() => { setRoleFilter(f.value); setPage(1); }}
+                className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                style={
+                  roleFilter === f.value
+                    ? { background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: "#10b981" }
+                    : { background: "rgba(255,255,255,0.04)", border: "1px solid hsl(var(--border))", color: "hsl(var(--muted-foreground))" }
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Table ───────────────────────────────────────────── */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
-      >
-        {/* Table header */}
-        <div
-          className="grid px-4 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider"
-          style={{
-            borderBottom: "1px solid hsl(var(--border)/0.6)",
-            gridTemplateColumns: "1fr auto auto auto",
-          }}
-        >
-          <span>Name</span>
-          <span className="mr-6">Phone</span>
-          <span className="mr-6">Roles</span>
-          <span>Joined</span>
-        </div>
-
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-muted-foreground">Loading…</div>
-        ) : participants.length === 0 ? (
-          <div className="py-16 text-center">
-            <div
-              className="h-14 w-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "rgba(16,185,129,0.08)" }}
-            >
-              <Users className="h-7 w-7" style={{ color: "#10b981" }} />
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg" style={{ background: "rgba(139,92,246,0.1)" }}>
+              <Users className="h-4 w-4" style={{ color: "#8b5cf6" }} />
             </div>
-            <p className="text-sm font-semibold text-foreground mb-1">
-              {search || roleFilter ? "No people found" : "No one here yet"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {search || roleFilter
-                ? "Try adjusting your search or filter."
-                : "Click 'Add Person' to onboard your first team member."}
-            </p>
+            <div>
+              <CardTitle>
+                {roleFilter ? `${ROLE_STYLES[roleFilter]?.label ?? roleFilter}s` : "All Participants"}
+              </CardTitle>
+              <CardDescription>
+                {data ? `${data.total} total person${data.total === 1 ? "" : "s"}` : "Loading..."}
+              </CardDescription>
+            </div>
           </div>
-        ) : (
-          participants.map((person) => {
-            const name = fullName(person);
-            const avatarColor = person.roles.includes("trainer")
-              ? { bg: "rgba(139,92,246,0.12)", text: "#8b5cf6" }
-              : { bg: "rgba(16,185,129,0.12)", text: "#10b981" };
-
-            return (
-              <button
-                key={person.participant_id}
-                onClick={() => setSelectedPerson(person)}
-                className="w-full text-left hover:bg-white/[0.02] transition-all group"
-                style={{ borderBottom: "1px solid hsl(var(--border)/0.4)" }}
-              >
-                <div
-                  className="grid items-center px-4 py-3"
-                  style={{ gridTemplateColumns: "1fr auto auto auto" }}
-                >
-                  {/* Name + avatar */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className="h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                      style={{ background: avatarColor.bg, color: avatarColor.text }}
-                    >
-                      {initials(person.first_name, person.last_name)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{person.email ?? "—"}</p>
-                    </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-muted-foreground">Loading participants...</div>
+            </div>
+          ) : participants.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead>Joined</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {participants.map((person) => {
+                    const name = fullName(person);
+                    const avatarColor = person.roles.includes("trainer")
+                      ? { bg: "rgba(139,92,246,0.12)", text: "#8b5cf6" }
+                      : { bg: "rgba(16,185,129,0.12)", text: "#10b981" };
+                    return (
+                      <TableRow
+                        key={person.participant_id}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedPerson(person)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="h-9 w-9 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                              style={{ background: avatarColor.bg, color: avatarColor.text }}
+                            >
+                              {initials(person.first_name, person.last_name)}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{name}</p>
+                              <p className="text-xs text-muted-foreground">{person.email ?? "—"}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{person.phone ?? "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {person.roles.map((r) => <RoleBadge key={r} role={r} />)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{fmtDate(person.joined_at)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              </div>
+              {data && Math.ceil(data.total / 10) > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {Math.min((page - 1) * 10 + 1, data.total)}–{Math.min(page * 10, data.total)} of {data.total}
                   </div>
-
-                  {/* Phone */}
-                  <span className="text-[11px] text-muted-foreground mr-6 tabular-nums">
-                    {person.phone ?? "—"}
-                  </span>
-
-                  {/* Roles */}
-                  <div className="flex flex-wrap gap-1 mr-6">
-                    {person.roles.map((r) => (
-                      <RoleBadge key={r} role={r} />
-                    ))}
-                  </div>
-
-                  {/* Joined */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-muted-foreground tabular-nums">
-                      {fmtDate(person.joined_at)}
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-1" />
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground px-1">{page} / {Math.ceil(data.total / 10)}</span>
+                    <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(Math.ceil(data.total / 10), p + 1))} disabled={page >= Math.ceil(data.total / 10)}>
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              </button>
-            );
-          })
-        )}
-      </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">
+                {search || roleFilter ? "No people found" : "No one here yet"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {search || roleFilter
+                  ? "Try adjusting your search or filter."
+                  : "Click 'Add Person' to onboard your first team member."}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Detail Panel ────────────────────────────────────── */}
       {selectedPerson && (
@@ -439,7 +459,7 @@ export default function ParticipantsPage() {
       {/* ── Toast ───────────────────────────────────────────── */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white max-w-[calc(100vw-3rem)]"
           style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
         >
           <CheckCircle className="h-4 w-4" />
