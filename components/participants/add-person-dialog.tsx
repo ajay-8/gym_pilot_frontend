@@ -328,15 +328,18 @@ export function AddPersonDialog({
                 {phoneRequired ? "*" : "(optional)"}
               </span>
             </label>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-              placeholder="9876543210"
-              maxLength={10}
-              className={inputClass}
-              style={inputStyle}
-            />
+            <div className="flex items-center overflow-hidden rounded-xl" style={inputStyle}>
+              <span className="px-3 py-2 text-sm text-muted-foreground flex-shrink-0 select-none"
+                style={{ borderRight: "1px solid hsl(var(--border))" }}>+91</span>
+              <input
+                type="tel"
+                value={form.phone.replace(/^\+?91/, "")}
+                onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="10-digit number"
+                maxLength={10}
+                className="flex-1 px-3 py-2 text-sm outline-none text-foreground placeholder:text-muted-foreground bg-transparent"
+              />
+            </div>
             {phoneRequired && !form.phone.trim() && (
               <p className="text-[11px] mt-1" style={{ color: "#f59e0b" }}>
                 Phone is required for member enrollment

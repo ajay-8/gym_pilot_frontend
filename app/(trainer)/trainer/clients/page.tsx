@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Users, ChevronRight, X, ClipboardList, Loader2 } from "lucide-react";
+import { Users, ChevronRight, X, ClipboardList, Loader2, Heart, AlertCircle } from "lucide-react";
 import {
   useMyClients,
   useLogSession,
   useMySessions,
 } from "@/lib/hooks/use-trainer-portal";
+import { useMemberHealthRecords } from "@/lib/hooks/use-members";
+import { fmtDate, initials, fullName as fmtFullName } from "@/lib/utils/formatting";
 import type { PTClientSummary, PTActivePackageSummary } from "@/types/api";
 import {
   Dialog,
@@ -22,19 +24,8 @@ import { Button } from "@/components/ui/button";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function initials(first: string | null, last: string | null) {
-  return ((first?.[0] ?? "") + (last?.[0] ?? "")).toUpperCase() || "?";
-}
-
 function fullName(c: PTClientSummary) {
-  return [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unnamed";
-}
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+  return fmtFullName(c.first_name, c.last_name);
 }
 
 /** First active package that still has credits, or first package overall, or null */
@@ -273,6 +264,55 @@ function LogSessionDialog({
   );
 }
 
+// ── Client Health Section (read-only for trainer) ─────────────────────────────
+
+function ClientHealthSection({ userId }: { userId: string }) {
+  const { data: health, isLoading } = useMemberHealthRecords(userId, true);
+  const ec = health?.emergency_contact as any;
+  const medNotes = (health?.medical_conditions as any)?.notes;
+  const hasAnyData = ec?.name || medNotes || health?.injuries_limitations;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Heart className="h-3 w-3" style={{ color: "#ef4444" }} />
+        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Health & Safety</p>
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Loading…</p>
+      ) : !hasAnyData ? (
+        <p className="text-xs text-muted-foreground italic">No health records on file.</p>
+      ) : (
+        <div className="rounded-xl p-3 space-y-3" style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)" }}>
+          {ec?.name && (
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Emergency Contact</p>
+              <p className="text-xs font-semibold text-foreground">{ec.name}</p>
+              {ec.relationship && <p className="text-[11px] text-muted-foreground">{ec.relationship}</p>}
+              {ec.phone && <p className="text-[11px] text-muted-foreground">{ec.phone}</p>}
+            </div>
+          )}
+          {medNotes && (
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <AlertCircle className="h-3 w-3 text-amber-400" />
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Medical / Allergies</p>
+              </div>
+              <p className="text-xs text-foreground">{medNotes}</p>
+            </div>
+          )}
+          {health?.injuries_limitations && (
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Injuries / Limitations</p>
+              <p className="text-xs text-foreground">{health.injuries_limitations}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Detail Panel ───────────────────────────────────────────────────────────────
 
 const STATUS_CHIP: Record<string, { label: string; color: string; bg: string }> = {
@@ -396,6 +436,9 @@ function DetailPanel({
               </div>
             </div>
           )}
+
+          {/* Health & Safety */}
+          <ClientHealthSection userId={client.user_id} />
 
           {/* Log session button */}
           {primaryPkg(client) && totalCredits(client) > 0 && (

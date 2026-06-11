@@ -1,15 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Search, Plus, X, Phone, Mail, Calendar, MessageSquare,
-  ChevronRight, Trash2, AlertTriangle, CheckCircle, Send, UserCheck, Pencil, Save,
+  ChevronLeft, ChevronRight, ChevronDown, Trash2, AlertTriangle, CheckCircle, Send, UserCheck, Pencil, Save,
+  Users, UserPlus, LayoutGrid, List, Eye,
+  Globe, Share2, Megaphone, HelpCircle, Filter,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
-  useLeads, useLeadCreate, useLeadUpdate, useLeadDelete,
+  useLeads, useLeadsStats, useLeadCreate, useLeadUpdate, useLeadDelete,
   useLeadAddNote, useLeadMarkLost, useLeadConvert,
 } from "@/lib/hooks/use-leads";
 import { useMemberOnboard } from "@/lib/hooks/use-members";
+import { fmtDate, fmtDateTime, initials } from "@/lib/utils/formatting";
 import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
 import {
   LeadResponse, LeadStatus, LeadSource,
@@ -38,6 +43,16 @@ const SOURCE_CONFIG: Record<LeadSource, { label: string; color: string }> = {
   other:         { label: "Other",        color: "#6b7280" },
 };
 
+const SOURCE_ICONS: Record<LeadSource, React.ElementType> = {
+  walk_in:       Users,
+  phone_inquiry: Phone,
+  web_form:      Globe,
+  referral:      UserPlus,
+  social_media:  Share2,
+  advertisement: Megaphone,
+  other:         HelpCircle,
+};
+
 const LEAD_SOURCES: LeadSource[] = [
   "walk_in", "phone_inquiry", "web_form", "referral", "social_media", "advertisement", "other",
 ];
@@ -48,27 +63,20 @@ const STATUS_PIPELINE: LeadStatus[] = [
   "new", "contacted", "scheduled_tour", "tour_completed", "trial_started", "converted",
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function initials(first: string, last?: string | null) {
-  return ((first[0] ?? "") + (last?.[0] ?? "")).toUpperCase();
-}
-
-function fmtDate(d: string) {
-  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
-
-function fmtDateTime(d: string) {
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-  });
-}
-
 function isOverdue(date: string | null) {
   if (!date) return false;
   return new Date(date + "T23:59:59") < new Date();
+}
+
+function getFollowUpBadge(date: string | null): { text: string; color: string; bg: string } | null {
+  if (!date) return null;
+  const d = new Date(date + "T00:00:00");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.floor((d.getTime() - today.getTime()) / 86400000);
+  if (diff < 0)  return { text: "OVERDUE",  color: "#ef4444", bg: "rgba(239,68,68,0.15)" };
+  if (diff === 0) return { text: "TODAY",   color: "#10b981", bg: "rgba(16,185,129,0.15)" };
+  if (diff === 1) return { text: "TOMORROW", color: "#f59e0b", bg: "rgba(245,158,11,0.15)" };
+  return null;
 }
 
 // ── StatusBadge ───────────────────────────────────────────────────────────────
@@ -90,6 +98,33 @@ function SourceBadge({ source }: { source: LeadSource }) {
       style={{ background: `${cfg.color}18`, color: cfg.color }}>
       {cfg.label}
     </span>
+  );
+}
+
+// ── FilterChip ────────────────────────────────────────────────────────────────
+
+function FilterChip({ icon: Icon, label, value, options, onChange }: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer select-none flex-shrink-0"
+      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+      <Icon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+      <span className="text-xs text-muted-foreground">{label}:</span>
+      <span className="text-xs font-semibold text-foreground">{value}</span>
+      <ChevronDown className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+      <select
+        value={options.find(o => o.label === value)?.value ?? ""}
+        onChange={e => onChange(e.target.value)}
+        className="absolute inset-0 opacity-0 cursor-pointer w-full"
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -161,12 +196,15 @@ function AddLeadDialog({ onClose }: { onClose: () => void }) {
             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
               Phone *
             </label>
-            <input value={form.phone} onChange={e => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-              placeholder="9876543210"
-              maxLength={10}
-              type="tel"
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground"
-              style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }} />
+            <div className="flex items-center overflow-hidden rounded-xl"
+              style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }}>
+              <span className="px-3 py-2 text-sm text-muted-foreground flex-shrink-0 select-none"
+                style={{ borderRight: "1px solid hsl(var(--border))" }}>+91</span>
+              <input value={form.phone.replace(/^\+?91/, "")}
+                onChange={e => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="10-digit number" maxLength={10} type="tel"
+                className="flex-1 px-3 py-2 text-sm outline-none text-foreground placeholder:text-muted-foreground bg-transparent" />
+            </div>
           </div>
 
           {/* Email */}
@@ -356,14 +394,14 @@ function ConvertDialog({ lead, onClose, onConverted }: ConvertDialogProps) {
 
       setStep("success");
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Conversion failed. Please try again.";
+      const msg = err?.detail ?? err?.response?.data?.detail ?? "Conversion failed. Please try again.";
       setError(msg);
     }
   };
 
   if (step === "success") {
     return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
         style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
         <div className="rounded-2xl w-full max-w-sm p-8 text-center shadow-2xl"
           style={{ background: "hsl(var(--card))", border: "1px solid rgba(16,185,129,0.3)" }}>
@@ -386,7 +424,7 @@ function ConvertDialog({ lead, onClose, onConverted }: ConvertDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
       <div className="rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
         style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
@@ -546,17 +584,24 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
     setEditMode(true);
   };
 
+  const [saveError, setSaveError] = useState("");
+
   const handleSaveEdit = async () => {
-    await updateLead.mutateAsync({ leadId: lead.id, payload: editForm });
-    setEditMode(false);
+    setSaveError("");
+    try {
+      await updateLead.mutateAsync({ leadId: lead.id, payload: editForm });
+      setEditMode(false);
+      onClose();
+    } catch {
+      setSaveError("Failed to save. Please try again.");
+    }
   };
 
   const setF = (k: keyof LeadUpdateRequest, v: string) =>
     setEditForm(f => ({ ...f, [k]: v || undefined }));
 
-  const handleStatusChange = async (newStatus: LeadStatus) => {
-    if (newStatus === lead.status) return;
-    await updateLead.mutateAsync({ leadId: lead.id, payload: { status: newStatus } });
+  const handleStatusChange = (newStatus: LeadStatus) => {
+    setEditForm(f => ({ ...f, status: newStatus }));
   };
 
   const handleAddNote = async () => {
@@ -570,20 +615,28 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
     onClose();
   };
 
-  return (
+  const portalRoot = typeof document !== "undefined" ? document.body : null;
+  if (!portalRoot) return null;
+
+  return createPortal(
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
+      <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Panel */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md flex flex-col shadow-2xl"
-        style={{ background: "hsl(var(--card))", borderLeft: "1px solid hsl(var(--border))" }}>
+      {/* Modal */}
+      <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
+      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl shadow-2xl pointer-events-auto overflow-hidden"
+        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+
+        {/* Colored accent strip */}
+        <div className="h-1 w-full flex-shrink-0"
+          style={{ background: `linear-gradient(90deg, ${cfg.color}, ${cfg.color}88)` }} />
 
         {/* Panel header */}
         <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
           style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-          <div className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-            style={{ background: cfg.bg, color: cfg.color }}>
+          <div className="h-11 w-11 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+            style={{ background: cfg.bg, color: cfg.color, boxShadow: `0 0 0 2px ${cfg.color}30` }}>
             {initials(lead.first_name, lead.last_name)}
           </div>
           <div className="flex-1 min-w-0">
@@ -595,19 +648,22 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
               <SourceBadge source={lead.source} />
             </div>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {lead.status !== "converted" && lead.status !== "lost" && (
-              <button onClick={editMode ? () => setEditMode(false) : startEdit}
-                className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted transition-colors"
-                title={editMode ? "Cancel edit" : "Edit lead"}>
-                {editMode
-                  ? <X className="h-3.5 w-3.5 text-muted-foreground" />
-                  : <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                }
-              </button>
+              editMode
+                ? <button onClick={() => setEditMode(false)}
+                    className="h-7 px-2.5 rounded-lg text-xs font-semibold transition-colors hover:bg-muted"
+                    style={{ color: "hsl(var(--muted-foreground))", border: "1px solid hsl(var(--border))" }}>
+                    Cancel
+                  </button>
+                : <button onClick={startEdit}
+                    className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                    title="Edit lead">
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
             )}
             <button onClick={onClose}
-              className="h-8 w-8 rounded-xl flex items-center justify-center hover:bg-muted transition-colors">
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
@@ -623,17 +679,25 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
             <div className="flex gap-1 flex-wrap">
               {STATUS_PIPELINE.map((s) => {
                 const scfg = STATUS_CONFIG[s];
-                const isActive = s === lead.status;
-                return (
+                const isActive = s === (editMode ? (editForm.status ?? lead.status) : lead.status);
+                return editMode ? (
                   <button key={s} onClick={() => handleStatusChange(s)}
-                    disabled={updateLead.isPending}
-                    className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-90 disabled:opacity-50"
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-90"
                     style={isActive
                       ? { background: scfg.bg, color: scfg.color, border: `1px solid ${scfg.color}50` }
                       : { background: "hsl(var(--muted)/0.4)", color: "hsl(var(--muted-foreground))", border: "1px solid transparent" }
                     }>
                     {scfg.label}
                   </button>
+                ) : (
+                  <span key={s}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-semibold"
+                    style={isActive
+                      ? { background: scfg.bg, color: scfg.color, border: `1px solid ${scfg.color}50` }
+                      : { background: "hsl(var(--muted)/0.2)", color: "hsl(var(--muted-foreground)/0.5)", border: "1px solid transparent" }
+                    }>
+                    {scfg.label}
+                  </span>
                 );
               })}
             </div>
@@ -683,10 +747,15 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
               {/* Phone */}
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Phone *</label>
-                <input value={editForm.phone ?? ""} onChange={e => setF("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  type="tel" maxLength={10}
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none text-foreground"
-                  style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }} />
+                <div className="flex items-center overflow-hidden rounded-xl"
+                  style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }}>
+                  <span className="px-3 py-2 text-sm text-muted-foreground flex-shrink-0 select-none"
+                    style={{ borderRight: "1px solid hsl(var(--border))" }}>+91</span>
+                  <input value={(editForm.phone ?? "").replace(/^\+?91/, "")}
+                    onChange={e => setF("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    type="tel" maxLength={10}
+                    className="flex-1 px-3 py-2 text-sm outline-none text-foreground bg-transparent" />
+                </div>
               </div>
 
               {/* Email */}
@@ -728,6 +797,9 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
                   style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }} />
               </div>
 
+              {saveError && (
+                <p className="text-[11px] text-center" style={{ color: "#ef4444" }}>{saveError}</p>
+              )}
               {/* Save button */}
               <button onClick={handleSaveEdit} disabled={updateLead.isPending || !editForm.first_name?.trim() || !editForm.phone?.trim()}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 transition-all hover:opacity-90"
@@ -740,14 +812,23 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
             <div className="p-5 space-y-4">
               {/* Contact info */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2.5">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Contact</p>
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{ background: "hsl(var(--muted)/0.2)" }}>
                   <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm text-foreground">{lead.phone}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] text-muted-foreground">Phone</p>
+                    <p className="text-sm font-medium text-foreground">{lead.phone}</p>
+                  </div>
                 </div>
                 {lead.email && (
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: "hsl(var(--muted)/0.2)" }}>
                     <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-sm text-foreground">{lead.email}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-muted-foreground">Email</p>
+                      <p className="text-sm font-medium text-foreground">{lead.email}</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -908,6 +989,7 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
           )}
         </div>
       </div>
+      </div>
 
       {showLostDialog && (
         <MarkLostDialog leadId={lead.id} onClose={() => setShowLostDialog(false)} />
@@ -919,66 +1001,200 @@ function LeadPanel({ lead, onClose }: { lead: LeadResponse; onClose: () => void 
           onConverted={onClose}
         />
       )}
-    </>
+    </>,
+    portalRoot
   );
 }
 
 // ── Lead Row ──────────────────────────────────────────────────────────────────
 
 function LeadRow({ lead, onClick }: { lead: LeadResponse; onClick: () => void }) {
+  const [showLostLocal, setShowLostLocal] = useState(false);
+  const cfg = STATUS_CONFIG[lead.status] ?? STATUS_CONFIG.new;
+  const srcCfg = SOURCE_CONFIG[lead.source] ?? SOURCE_CONFIG.other;
+  const SrcIcon = SOURCE_ICONS[lead.source] ?? HelpCircle;
+  const badge = getFollowUpBadge(lead.next_follow_up_date);
+
+  return (
+    <>
+      <tr onClick={onClick}
+        className="cursor-pointer hover:bg-white/[0.03] transition-colors"
+        style={{ borderBottom: "1px solid hsl(var(--border)/0.5)" }}>
+
+        {/* Name */}
+        <td className="px-5 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+              style={{ background: cfg.bg, color: cfg.color }}>
+              {initials(lead.first_name, lead.last_name)}
+            </div>
+            <p className="text-sm font-semibold text-foreground truncate">
+              {lead.first_name} {lead.last_name ?? ""}
+            </p>
+          </div>
+        </td>
+
+        {/* Phone */}
+        <td className="px-4 py-3.5 hidden sm:table-cell">
+          <span className="text-[11px] text-foreground">{lead.phone}</span>
+        </td>
+
+        {/* Email */}
+        <td className="px-4 py-3.5 hidden md:table-cell">
+          <span className="text-[11px] text-foreground">{lead.email ?? "—"}</span>
+        </td>
+
+        {/* Source */}
+        <td className="px-4 py-3.5 hidden sm:table-cell">
+          <div className="flex items-center gap-1.5">
+            <SrcIcon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: srcCfg.color }} />
+            <span className="text-xs text-muted-foreground">{srcCfg.label}</span>
+          </div>
+        </td>
+
+        {/* Status */}
+        <td className="px-4 py-3.5">
+          <StatusBadge status={lead.status} />
+        </td>
+
+        {/* Follow-up */}
+        <td className="px-4 py-3 hidden md:table-cell">
+          {lead.next_follow_up_date ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-foreground">{fmtDate(lead.next_follow_up_date)}</span>
+              {badge && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: badge.bg, color: badge.color }}>
+                  {badge.text}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">—</span>
+          )}
+        </td>
+
+        {/* Actions */}
+        <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-0.5">
+            <button onClick={() => onClick()}
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors"
+              style={{ color: "hsl(var(--muted-foreground))" }}
+              title="View details">
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => onClick()}
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors"
+              style={{ color: "hsl(var(--muted-foreground))" }}
+              title="Add note">
+              <MessageSquare className="h-3.5 w-3.5" />
+            </button>
+            {lead.status !== "converted" && lead.status !== "lost" && (
+              <button onClick={e => { e.stopPropagation(); setShowLostLocal(true); }}
+                className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors"
+                style={{ color: "#ef4444" }}
+                title="Mark lost">
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+      {showLostLocal && typeof document !== "undefined" && createPortal(
+        <MarkLostDialog leadId={lead.id} onClose={() => setShowLostLocal(false)} />,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ── Lead Card (grid view) ─────────────────────────────────────────────────────
+
+function LeadCard({ lead, onClick }: { lead: LeadResponse; onClick: () => void }) {
   const cfg = STATUS_CONFIG[lead.status] ?? STATUS_CONFIG.new;
   const overdue = isOverdue(lead.next_follow_up_date);
 
   return (
-    <div onClick={onClick}
-      className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] transition-colors"
-      style={{ borderBottom: "1px solid hsl(var(--border)/0.6)" }}>
+    <div
+      className="rounded-2xl p-4 cursor-pointer transition-all hover:translate-y-[-1px]"
+      style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+      onClick={onClick}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+            style={{ background: cfg.bg, color: cfg.color }}>
+            {initials(lead.first_name, lead.last_name)}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground leading-tight">
+              {lead.first_name} {lead.last_name ?? ""}
+            </p>
+            <StatusBadge status={lead.status} />
+          </div>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+      </div>
 
-      {/* Left accent + avatar */}
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <div className="w-0.5 h-9 rounded-full" style={{ background: cfg.color, opacity: 0.6 }} />
-        <div className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold"
-          style={{ background: cfg.bg, color: cfg.color }}>
-          {initials(lead.first_name, lead.last_name)}
+      {/* Source + Follow-up rows */}
+      <div className="space-y-1.5 mb-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">Source</span>
+          <SourceBadge source={lead.source} />
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">Follow-up</span>
+          {lead.next_follow_up_date ? (
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3 flex-shrink-0" style={{ color: overdue ? "#ef4444" : "#f59e0b" }} />
+              <span className="text-[11px] font-semibold" style={{ color: overdue ? "#ef4444" : "#f59e0b" }}>
+                {fmtDate(lead.next_follow_up_date)}
+              </span>
+              {overdue && (
+                <span className="text-[9px] font-bold px-1 py-0.5 rounded"
+                  style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                  Overdue
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">—</span>
+          )}
         </div>
       </div>
 
-      {/* Name + phone */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground truncate leading-tight">
-          {lead.first_name} {lead.last_name ?? ""}
-        </p>
-        <p className="text-[11px] text-muted-foreground">{lead.phone}</p>
+      {/* Action buttons */}
+      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+        <a href={`tel:${lead.phone}`}
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity"
+          style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
+          <Phone className="h-3 w-3" />
+          Call
+        </a>
+        {lead.email ? (
+          <a href={`mailto:${lead.email}`}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity"
+            style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.2)" }}>
+            <Mail className="h-3 w-3" />
+            Email
+          </a>
+        ) : (
+          <button onClick={() => onClick()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity"
+            style={{ background: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}>
+            <MessageSquare className="h-3 w-3" />
+            Notes
+          </button>
+        )}
       </div>
-
-      {/* Source badge — hidden on mobile */}
-      <div className="hidden sm:block flex-shrink-0">
-        <SourceBadge source={lead.source} />
-      </div>
-
-      {/* Status badge */}
-      <div className="flex-shrink-0">
-        <StatusBadge status={lead.status} />
-      </div>
-
-      {/* Follow-up date — hidden on mobile */}
-      {lead.next_follow_up_date && (
-        <div className="hidden md:block flex-shrink-0 text-right">
-          <p className="text-[10px] text-muted-foreground">Follow-up</p>
-          <p className="text-xs font-semibold" style={{ color: overdue ? "#ef4444" : "#f59e0b" }}>
-            {fmtDate(lead.next_follow_up_date)}
-          </p>
-        </div>
-      )}
-
-      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
     </div>
   );
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-const STATUS_TABS = [
+const STATUS_TABS: { key: LeadStatus | ""; label: string }[] = [
   { key: "", label: "All" },
   { key: "new", label: "New" },
   { key: "contacted", label: "Contacted" },
@@ -987,142 +1203,307 @@ const STATUS_TABS = [
   { key: "trial_started", label: "Trial" },
   { key: "converted", label: "Converted" },
   { key: "lost", label: "Lost" },
-];
+];  
+
+const LEADS_PAGE_SIZE = 10;
 
 export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadResponse | null>(null);
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const { data, isLoading } = useLeads({
     status: statusFilter || undefined,
     source: sourceFilter || undefined,
-    per_page: 100,
+    search: debouncedSearch || undefined,
+    page,
+    per_page: LEADS_PAGE_SIZE,
   });
 
-  const leads = useMemo(() => {
-    const all = data?.leads ?? [];
-    if (!search.trim()) return all;
-    const q = search.toLowerCase();
-    return all.filter(l =>
-      `${l.first_name} ${l.last_name ?? ""}`.toLowerCase().includes(q) ||
-      l.phone.includes(q) ||
-      (l.email ?? "").toLowerCase().includes(q)
-    );
-  }, [data, search]);
+  const { data: stats } = useLeadsStats();
+
+  const leads = data?.leads ?? [];
 
   // Keep selected lead in sync with updated data
   const panelLead = selectedLead
     ? (leads.find(l => l.id === selectedLead.id) ?? selectedLead)
     : null;
 
-  const overdueCount = (data?.leads ?? []).filter(
-    l => l.status !== "converted" && l.status !== "lost" && isOverdue(l.next_follow_up_date)
-  ).length;
+  // Conversion by source (computed from current page leads)
+  const conversionStats = [
+    { key: "web_form" as LeadSource,    label: "Web" },
+    { key: "referral" as LeadSource,    label: "Referral" },
+    { key: "social_media" as LeadSource, label: "Social" },
+  ].map(s => {
+    const sl = leads.filter(l => l.source === s.key);
+    return { ...s, rate: sl.length > 0 ? Math.round(sl.filter(l => l.status === "converted").length / sl.length * 100) : null };
+  }).filter(s => s.rate !== null);
 
   return (
     <div className="space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Leads</h1>
-          <p className="text-[11px] text-muted-foreground">
-            {data?.total ?? 0} total
-            {overdueCount > 0 && (
-              <span className="ml-2 font-semibold" style={{ color: "#ef4444" }}>
-                · {overdueCount} overdue follow-ups
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Leads</h1>
+            {(stats?.total ?? 0) > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                style={{ background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>
+                {stats!.total} TOTAL
               </span>
             )}
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Manage your sales pipeline and track conversion metrics from all sources
           </p>
         </div>
         <button onClick={() => setShowAddDialog(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 active:scale-95"
-          style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}>
-          <Plus className="h-3.5 w-3.5" />
-          Add Lead
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 shadow-lg flex-shrink-0"
+          style={{ background: "linear-gradient(135deg,#10b981,#059669)", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}>
+          <Plus className="h-4 w-4" />
+          New Lead
         </button>
       </div>
 
-      {/* ── Filters ────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        {/* Status tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-          {STATUS_TABS.map(tab => {
-            const active = statusFilter === tab.key;
-            const count = tab.key === ""
-              ? data?.total
-              : (data?.leads ?? []).filter(l => l.status === tab.key).length;
-            return (
-              <button key={tab.key} onClick={() => setStatusFilter(tab.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0"
-                style={active
-                  ? { background: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }
-                  : { background: "hsl(var(--card))", color: "hsl(var(--muted-foreground))", border: "1px solid hsl(var(--border))" }
-                }>
-                {tab.label}
-                {count !== undefined && count > 0 && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={active
-                      ? { background: "rgba(16,185,129,0.2)", color: "#10b981" }
-                      : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
-                    }>
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      {/* ── Stat Cards + Conversion ─────────────────────────────────────── */}
+      {(() => {
+        const total = stats?.total ?? 0;
+        const newCount = stats?.new_count ?? 0;
+        const converted = stats?.converted_count ?? 0;
+        const overdue = stats?.overdue_count ?? 0;
+        const inProgress = Math.max(0, total - newCount - converted);
+        const convPct = total > 0 ? Math.round((converted / total) * 100) : null;
+        const newPct  = total > 0 ? Math.round((newCount  / total) * 100) : null;
+        const hasOverdue = overdue > 0;
+
+        return (
+          <div className="grid grid-cols-5 gap-3">
+
+            {/* Total Leads */}
+            <div className="rounded-2xl p-3.5" style={{ background: "hsl(var(--card))", border: "1px solid rgba(59,130,246,0.25)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(59,130,246,0.12)" }}>
+                  <Users className="h-4 w-4" style={{ color: "#3b82f6" }} />
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>All</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
+              <p className="text-2xl font-bold" style={{ color: "#3b82f6" }}>{total}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {total > 0 ? `${newCount} new · ${inProgress} in progress` : "No leads yet"}
+              </p>
+            </div>
+
+            {/* New */}
+            <div className="rounded-2xl p-3.5" style={{ background: "hsl(var(--card))", border: "1px solid rgba(139,92,246,0.25)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(139,92,246,0.12)" }}>
+                  <UserPlus className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>
+                  {newPct !== null ? `${newPct}%` : "—"}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">New</p>
+              <p className="text-2xl font-bold" style={{ color: "#8b5cf6" }}>{newCount}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Awaiting first contact</p>
+            </div>
+
+            {/* Follow-ups */}
+            <div className="rounded-2xl p-3.5" style={{ background: "hsl(var(--card))", border: `1px solid ${hasOverdue ? "rgba(239,68,68,0.3)" : "rgba(245,158,11,0.25)"}` }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: hasOverdue ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)" }}>
+                  <Calendar className="h-4 w-4" style={{ color: hasOverdue ? "#ef4444" : "#f59e0b" }} />
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={hasOverdue
+                    ? { background: "rgba(239,68,68,0.1)", color: "#ef4444" }
+                    : { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                  {hasOverdue ? "Overdue" : "On track"}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Follow-ups</p>
+              <p className="text-2xl font-bold" style={{ color: hasOverdue ? "#ef4444" : "#f59e0b" }}>{overdue}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{hasOverdue ? "Need immediate action" : "All follow-ups on schedule"}</p>
+            </div>
+
+            {/* Converted */}
+            <div className="rounded-2xl p-3.5" style={{ background: "hsl(var(--card))", border: "1px solid rgba(16,185,129,0.25)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(16,185,129,0.12)" }}>
+                  <CheckCircle className="h-4 w-4" style={{ color: "#10b981" }} />
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.1)", color: "#10b981" }}>
+                  {convPct !== null ? `${convPct}%` : "—"}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Converted</p>
+              <p className="text-2xl font-bold" style={{ color: "#10b981" }}>{converted}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{converted === 1 ? "1 member joined" : `${converted} members joined`}</p>
+            </div>
+
+            {/* Conversion Rate by Source */}
+            <div className="rounded-2xl p-3.5" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2.5">Conversion Rate</p>
+              {conversionStats.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {conversionStats.map(s => {
+                    const SrcIcon = SOURCE_ICONS[s.key] ?? HelpCircle;
+                    const srcCfg = SOURCE_CONFIG[s.key];
+                    return (
+                      <div key={s.key} className="flex items-center gap-2">
+                        <SrcIcon className="h-3 w-3 flex-shrink-0" style={{ color: srcCfg.color }} />
+                        <span className="text-[10px] text-muted-foreground flex-1 truncate">{s.label}</span>
+                        <span className="text-[11px] font-bold" style={{ color: "#10b981" }}>{s.rate}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">No data yet</p>
+              )}
+            </div>
+
+          </div>
+        );
+      })()}
+
+      {/* ── Filters + Search ────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <FilterChip
+          icon={Filter}
+          label="Status"
+          value={statusFilter ? (STATUS_CONFIG[statusFilter as LeadStatus]?.label ?? statusFilter) : "All"}
+          options={[{ value: "", label: "All" }, ...STATUS_TABS.filter(t => t.key).map(t => ({ value: t.key, label: t.label }))]}
+          onChange={v => { setStatusFilter(v); setPage(1); }}
+        />
+        <FilterChip
+          icon={Globe}
+          label="Source"
+          value={sourceFilter ? (SOURCE_CONFIG[sourceFilter as LeadSource]?.label ?? sourceFilter) : "Any"}
+          options={[{ value: "", label: "Any" }, ...LEAD_SOURCES.map(s => ({ value: s, label: SOURCE_CONFIG[s].label }))]}
+          onChange={v => { setSourceFilter(v); setPage(1); }}
+        />
+
+        {/* View toggle */}
+        <div className="flex items-center gap-0.5 p-0.5 rounded-full flex-shrink-0"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <button onClick={() => setViewMode("table")}
+            className="h-7 w-7 rounded-full flex items-center justify-center transition-all"
+            style={viewMode === "table" ? { background: "rgba(16,185,129,0.12)", color: "#10b981" } : { color: "hsl(var(--muted-foreground))" }}>
+            <List className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={() => setViewMode("grid")}
+            className="h-7 w-7 rounded-full flex items-center justify-center transition-all"
+            style={viewMode === "grid" ? { background: "rgba(16,185,129,0.12)", color: "#10b981" } : { color: "hsl(var(--muted-foreground))" }}>
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
         </div>
 
-        {/* Search + source filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input type="text" placeholder="Search by name, phone, email…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none text-foreground placeholder:text-muted-foreground"
-              style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-          </div>
-          <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl text-xs font-semibold outline-none"
-            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", color: "hsl(var(--foreground))" }}>
-            <option value="">All Sources</option>
-            {LEAD_SOURCES.map(s => (
-              <option key={s} value={s}>{SOURCE_CONFIG[s].label}</option>
-            ))}
-          </select>
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input type="text" placeholder="Search leads by name, phone, email…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-1.5 rounded-full text-sm outline-none text-foreground placeholder:text-muted-foreground"
+            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
         </div>
       </div>
 
       {/* ── Lead List ──────────────────────────────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-muted-foreground">Loading…</div>
-        ) : leads.length === 0 ? (
-          <div className="py-14 text-center">
-            <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: "rgba(16,185,129,0.08)" }}>
-              <Plus className="h-6 w-6" style={{ color: "#10b981" }} />
-            </div>
-            <p className="text-sm font-semibold text-foreground mb-1">
-              {search || statusFilter || sourceFilter ? "No leads match your filters" : "No leads yet"}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              {search || statusFilter || sourceFilter
-                ? "Try changing the filters"
-                : "Add your first lead to start tracking prospects"}
-            </p>
+      {isLoading ? (
+        <div className="rounded-2xl py-12 text-center text-xs text-muted-foreground"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          Loading…
+        </div>
+      ) : leads.length === 0 ? (
+        <div className="rounded-2xl py-14 text-center"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-3"
+            style={{ background: "rgba(16,185,129,0.08)" }}>
+            <UserPlus className="h-6 w-6" style={{ color: "#10b981" }} />
           </div>
-        ) : (
-          leads.map(lead => (
-            <LeadRow key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
-          ))
-        )}
-      </div>
+          <p className="text-sm font-semibold text-foreground mb-1">
+            {search || statusFilter || sourceFilter ? "No leads match your filters" : "No leads yet"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {search || statusFilter || sourceFilter ? "Try changing the filters" : "Add your first lead to start tracking prospects"}
+          </p>
+        </div>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {leads.map(lead => (
+            <LeadCard key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
+          ))}
+          <div onClick={() => setShowAddDialog(true)}
+            className="rounded-2xl p-4 cursor-pointer transition-all hover:translate-y-[-1px] flex items-center justify-center min-h-[168px]"
+            style={{ background: "hsl(var(--card))", border: "1px dashed rgba(16,185,129,0.3)" }}>
+            <div className="text-center">
+              <div className="h-12 w-12 rounded-2xl flex items-center justify-center mx-auto mb-2"
+                style={{ background: "rgba(16,185,129,0.08)" }}>
+                <UserPlus className="h-5 w-5" style={{ color: "#10b981" }} />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Add New Lead</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Click to add</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr style={{ borderBottom: "1px solid hsl(var(--border))", background: "hsl(var(--muted)/0.3)" }}>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Name</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Phone</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Email</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Source</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Current Status</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Next Follow-up</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map(lead => (
+                  <LeadRow key={lead.id} lead={lead} onClick={() => setSelectedLead(lead)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pagination ──────────────────────────────────────────────────── */}
+      {data && leads.length > 0 && data.total_pages > 1 && (
+        <div className="flex items-center justify-between mt-4 pt-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            Showing {Math.min((page - 1) * LEADS_PAGE_SIZE + 1, data.total)}–{Math.min(page * LEADS_PAGE_SIZE, data.total)} of {data.total} lead{data.total !== 1 ? "s" : ""}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground px-1">{page} / {data.total_pages}</span>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(data.total_pages, p + 1))} disabled={page >= data.total_pages}>
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── Dialogs & Panels ───────────────────────────────────────────── */}
       {showAddDialog && <AddLeadDialog onClose={() => setShowAddDialog(false)} />}

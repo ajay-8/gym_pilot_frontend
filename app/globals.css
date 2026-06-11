@@ -71,6 +71,19 @@
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(222 16% 20%);
   }
+
+  /* Native select — force dark background so the OS dropdown isn't white */
+  select {
+    background-color: #13171f;
+    color: #e2e8f0;
+  }
+  select option {
+    background-color: #13171f;
+    color: #e2e8f0;
+  }
+  select option:checked {
+    background-color: #1e2433;
+  }
 }
 
 @layer utilities {
@@ -98,4 +111,128 @@
   /* Glow on cards */
   .glow-green  { box-shadow: 0 0 20px rgba(16, 185, 129, 0.12); }
   .glow-purple { box-shadow: 0 0 20px rgba(139, 92, 246, 0.12); }
+
+}
+
+/* ── Landing page keyframes ────────────────────────────────────────────────── */
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes lp-gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+@keyframes lp-shiny-text {
+  0%   { background-position: calc(-100% - var(--shiny-width, 60px)) 0; }
+  60%  { background-position: calc(100% + var(--shiny-width, 60px)) 0; }
+  100% { background-position: calc(100% + var(--shiny-width, 60px)) 0; }
+}
+@keyframes lp-shimmer-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes lp-fade-up {
+  0%   { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes lp-ping {
+  0%         { transform: scale(1); opacity: 1; }
+  75%, 100%  { transform: scale(2.2); opacity: 0; }
+}
+@keyframes lp-pulse-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.6); }
+  70%  { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+}
+@keyframes lp-border-glow {
+  0%, 100% { border-color: rgba(16,185,129,0.25); }
+  50%       { border-color: rgba(16,185,129,0.65); box-shadow: 0 0 18px rgba(16,185,129,0.2); }
+}
+@keyframes lp-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes lp-bounce-arrow {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(5px); }
+}
+@keyframes lp-scale-in {
+  0%   { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes lp-count-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Landing utility classes ───────────────────────────────────────────────── */
+@layer utilities {
+  .animate-lp-float {
+    animation: lp-float 3s ease-in-out infinite;
+  }
+  .animate-lp-gradient-x {
+    background-size: 200% 200%;
+    animation: lp-gradient-x 4s ease infinite;
+  }
+  .animate-lp-shiny {
+    --shiny-width: 80px;
+    background-image: linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shiny-width)),
+      rgba(255,255,255,0.45) 50%,
+      transparent calc(50% + var(--shiny-width))
+    );
+    background-size: 250% 100%;
+    animation: lp-shiny-text 3s ease-in-out infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .animate-lp-fade-up {
+    animation: lp-fade-up 0.6s cubic-bezier(.25,.1,.25,1) both;
+  }
+  .animate-lp-ping {
+    animation: lp-ping 1.4s cubic-bezier(0,0,.2,1) infinite;
+  }
+  .animate-lp-pulse-glow {
+    animation: lp-pulse-glow 2s ease-out infinite;
+  }
+  .animate-lp-border-glow {
+    animation: lp-border-glow 2.5s ease-in-out infinite;
+  }
+  .animate-lp-marquee {
+    animation: lp-marquee 28s linear infinite;
+  }
+  .animate-lp-bounce-arrow {
+    animation: lp-bounce-arrow 1.6s ease-in-out infinite;
+  }
+  .animate-lp-scale-in {
+    animation: lp-scale-in 0.5s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  .animate-lp-count-up {
+    animation: lp-count-up 0.7s ease-out forwards;
+  }
+  /* Stagger delays */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+  /* Spring hover */
+  .hover-spring {
+    transition: transform 0.5s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease;
+  }
+  .hover-spring:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Suppress Recharts focus outlines — must be outside @layer to beat browser UA styles */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }

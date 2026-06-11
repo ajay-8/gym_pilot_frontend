@@ -125,6 +125,15 @@ export function useMembershipRenew() {
 }
 
 /**
+ * Hook to send a membership renewal reminder to a member
+ */
+export function useMemberRemind() {
+  return useMutation({
+    mutationFn: (userId: string) => membersApi.remindMember(userId),
+  });
+}
+
+/**
  * Hook to update member details
  */
 export function useMemberUpdate() {
@@ -173,7 +182,7 @@ export function useMemberHealthRecords(userId: string, enabled = true) {
 }
 
 /**
- * Hook to update member health records
+ * Hook to update member health records (admin/staff)
  */
 export function useMemberHealthRecordsUpdate() {
   const queryClient = useQueryClient();
@@ -182,8 +191,32 @@ export function useMemberHealthRecordsUpdate() {
     mutationFn: ({ userId, payload }: { userId: string; payload: MemberHealthRecordsUpdateRequest }) =>
       membersApi.updateHealthRecords(userId, payload),
     onSuccess: (_, variables) => {
-      // Invalidate health records query
       queryClient.invalidateQueries({ queryKey: memberKeys.healthRecords(undefined, variables.userId) });
+    },
+  });
+}
+
+/**
+ * Hook to fetch own health records (member self-service)
+ */
+export function useMyHealthRecords() {
+  return useQuery({
+    queryKey: ["my-health-records"],
+    queryFn: () => membersApi.getMyHealthRecords(),
+  });
+}
+
+/**
+ * Hook to update own health records (member self-service)
+ */
+export function useMyHealthRecordsUpdate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: MemberHealthRecordsUpdateRequest) =>
+      membersApi.updateMyHealthRecords(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-health-records"] });
     },
   });
 }

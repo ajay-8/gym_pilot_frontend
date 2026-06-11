@@ -12,19 +12,15 @@ import {
   Calendar,
   Globe,
   Hash,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Phone,
+  Mail,
+  Link as LinkIcon,
 } from "lucide-react";
 import { useCurrentGym, useGymUpdate } from "@/lib/hooks/use-gym";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { fmtDate } from "@/lib/utils/formatting";
 
 // ── Alert ─────────────────────────────────────────────────────────────────────
 
@@ -265,21 +261,31 @@ function GymInfoSection() {
         <SectionCard icon={MapPin} title="Location Details" iconColor="#3b82f6">
           <div className="space-y-2">
             <InfoRow icon={MapPin} label="Address" value={gym?.address ?? "—"} color="#3b82f6" />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <InfoRow icon={Globe} label="City" value={gym?.city ?? "—"} color="#8b5cf6" />
               <InfoRow icon={Globe} label="State" value={gym?.state ?? "—"} color="#8b5cf6" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <InfoRow icon={Globe} label="Country" value={gym?.country ?? "—"} color="#10b981" />
               <InfoRow icon={Hash} label="Pincode" value={gym?.pincode?.toString() ?? "—"} color="#f59e0b" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <InfoRow icon={Calendar} label="Created" value={fmtDate(gym?.created_at)} color="#6b7280" />
               <InfoRow icon={Calendar} label="Updated" value={fmtDate(gym?.updated_at)} color="#6b7280" />
             </div>
             {feedback && <Alert type={feedback.type} message={feedback.msg} />}
           </div>
         </SectionCard>
+      )}
+
+      {/* ── Contact Info ─────────────────────────────────────────────── */}
+      {!editing && (
+        <ContactInfoSection />
+      )}
+
+      {/* ── Public Listing Toggle ─────────────────────────────────────── */}
+      {!editing && (
+        <PublicListingToggle />
       )}
 
       {/* ── Edit Form ────────────────────────────────────────────────── */}
@@ -298,7 +304,7 @@ function GymInfoSection() {
               onChange={(v) => setForm((f) => ({ ...f, address: v }))}
               placeholder="Street address"
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FieldInput
                 label="City"
                 value={form.city}
@@ -312,7 +318,7 @@ function GymInfoSection() {
                 placeholder="e.g. Maharashtra"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FieldInput
                 label="Country"
                 value={form.country}
@@ -355,13 +361,198 @@ function GymInfoSection() {
   );
 }
 
+function ContactInfoSection() {
+  const { data: gym } = useCurrentGym();
+  const updateMutation = useGymUpdate();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ contact_phone: "", contact_email: "", website: "" });
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const startEdit = () => {
+    setForm({
+      contact_phone: gym?.contact_phone ?? "",
+      contact_email: gym?.contact_email ?? "",
+      website: gym?.website ?? "",
+    });
+    setFeedback(null);
+    setEditing(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateMutation.mutateAsync({
+        contact_phone: form.contact_phone || undefined,
+        contact_email: form.contact_email || undefined,
+        website: form.website || undefined,
+      });
+      setEditing(false);
+      setFeedback({ type: "success", msg: "Contact info updated." });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback({ type: "error", msg: "Failed to update contact info." });
+    }
+  };
+
+  return (
+    <SectionCard icon={Phone} title="Public Contact Info" iconColor="#3b82f6">
+      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+        This information is shown on your public gym profile so enquiries can reach you directly.
+      </p>
+
+      {!editing ? (
+        <div className="space-y-2">
+          <InfoRow icon={Phone} label="Phone" value={gym?.contact_phone ?? "—"} color="#10b981" />
+          <InfoRow icon={Mail} label="Email" value={gym?.contact_email ?? "—"} color="#8b5cf6" />
+          <InfoRow icon={LinkIcon} label="Website" value={gym?.website ?? "—"} color="#3b82f6" />
+          {feedback && <Alert type={feedback.type} message={feedback.msg} />}
+          <div className="pt-1">
+            <button
+              onClick={startEdit}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all hover:opacity-90"
+              style={{ background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              Edit Contact Info
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSave} className="space-y-3">
+          <FieldInput
+            label="Reception Phone"
+            value={form.contact_phone}
+            onChange={(v) => setForm((f) => ({ ...f, contact_phone: v }))}
+            placeholder="+91 98765 43210"
+            type="tel"
+          />
+          <FieldInput
+            label="Enquiry Email"
+            value={form.contact_email}
+            onChange={(v) => setForm((f) => ({ ...f, contact_email: v }))}
+            placeholder="info@yourgym.com"
+            type="email"
+          />
+          <FieldInput
+            label="Website"
+            value={form.website}
+            onChange={(v) => setForm((f) => ({ ...f, website: v }))}
+            placeholder="https://yourgym.com"
+            type="url"
+          />
+          {feedback && <Alert type={feedback.type} message={feedback.msg} />}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={updateMutation.isPending}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-40"
+              style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
+            >
+              <Save className="h-3.5 w-3.5" />
+              {updateMutation.isPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setFeedback(null); }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold"
+              style={{ background: "hsl(var(--muted)/0.4)", color: "hsl(var(--muted-foreground))" }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </SectionCard>
+  );
+}
+
+function PublicListingToggle() {
+  const { data: gym } = useCurrentGym();
+  const updateMutation = useGymUpdate();
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  const isListed = gym?.is_publicly_listed ?? true;
+  const slug = gym?.slug;
+
+  const toggle = async () => {
+    try {
+      await updateMutation.mutateAsync({ is_publicly_listed: !isListed });
+      setFeedback({
+        type: "success",
+        msg: !isListed
+          ? "Your gym is now publicly listed in the gym finder."
+          : "Your gym is now hidden from the public gym finder.",
+      });
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback({ type: "error", msg: "Failed to update listing status." });
+    }
+  };
+
+  return (
+    <SectionCard icon={Eye} title="Public Gym Listing" iconColor="#8b5cf6">
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          When enabled, your gym appears in the public gym finder where anyone can discover it,
+          view your membership plans, and see your amenities.
+        </p>
+
+        <div className="flex items-center justify-between p-3 rounded-xl"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-2.5">
+            {isListed
+              ? <Eye className="h-4 w-4 text-emerald-400" />
+              : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+            <div>
+              <p className="text-sm font-medium text-white">
+                {isListed ? "Publicly listed" : "Hidden from finder"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isListed ? "Visible to anyone searching for gyms" : "Not shown in public gym search"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={toggle}
+            disabled={updateMutation.isPending}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+            style={isListed
+              ? { background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }
+              : { background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.25)" }}
+          >
+            {updateMutation.isPending ? "Saving…" : isListed ? "Hide Gym" : "List Gym"}
+          </button>
+        </div>
+
+        {isListed && slug && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>Public URL:</span>
+            <a
+              href={`/gyms/${slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-emerald-400 hover:underline truncate"
+            >
+              /gyms/{slug}
+            </a>
+          </div>
+        )}
+
+        {feedback && <Alert type={feedback.type} message={feedback.msg} />}
+      </div>
+    </SectionCard>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function GymSettingsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div>
-        <h1 className="text-base font-bold text-foreground leading-tight">Gym Settings</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Gym Settings</h1>
         <p className="text-[11px] text-muted-foreground">
           Manage your gym&apos;s details and location
         </p>

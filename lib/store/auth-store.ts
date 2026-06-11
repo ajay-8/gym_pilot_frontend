@@ -11,7 +11,7 @@ interface AuthState {
   _hasHydrated: boolean;
 
   // Actions
-  setAuth: (user: AuthUserResponse, accessToken: string) => void;
+  setAuth: (user: AuthUserResponse, accessToken: string, rememberMe?: boolean) => void;
   setGymContext: (gymContext: GymContextResponse | null) => void;
   clearAuth: () => void;
   updateAccessToken: (accessToken: string) => void;
@@ -29,10 +29,16 @@ export const useAuthStore = create<AuthState>()(
       _hasHydrated: false,
 
       // Set authentication
-      setAuth: (user, accessToken) => {
-        // Store token in localStorage for API client
+      setAuth: (user, accessToken, rememberMe = true) => {
+        // Store token in localStorage (remember me) or sessionStorage (session only)
         if (typeof window !== "undefined") {
-          localStorage.setItem("access_token", accessToken);
+          if (rememberMe) {
+            localStorage.setItem("access_token", accessToken);
+            sessionStorage.removeItem("access_token");
+          } else {
+            sessionStorage.setItem("access_token", accessToken);
+            localStorage.removeItem("access_token");
+          }
         }
 
         set({
@@ -49,9 +55,10 @@ export const useAuthStore = create<AuthState>()(
 
       // Clear authentication
       clearAuth: () => {
-        // Remove token from localStorage
+        // Remove token from both storages
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
+          sessionStorage.removeItem("access_token");
         }
 
         set({
@@ -64,9 +71,13 @@ export const useAuthStore = create<AuthState>()(
 
       // Update access token (for token refresh)
       updateAccessToken: (accessToken) => {
-        // Store token in localStorage for API client
+        // Preserve whichever storage the token is currently in
         if (typeof window !== "undefined") {
-          localStorage.setItem("access_token", accessToken);
+          if (localStorage.getItem("access_token")) {
+            localStorage.setItem("access_token", accessToken);
+          } else {
+            sessionStorage.setItem("access_token", accessToken);
+          }
         }
 
         set({ accessToken });
@@ -87,9 +98,9 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        // Check if we have a valid token in localStorage
+        // Check localStorage first (remember me), then sessionStorage (session only)
         if (typeof window !== "undefined") {
-          const token = localStorage.getItem("access_token");
+          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
           if (state && token) {
             // Token exists, restore accessToken to state
             state.accessToken = token;

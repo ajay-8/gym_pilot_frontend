@@ -39,7 +39,7 @@ const formSchema = z.object({
   last_name: z.string().max(100).optional().or(z.literal("")),
   phone: z
     .string()
-    .regex(/^(\+91[-\s]?)?[6-9]\d{9}$/, "Invalid Indian phone number")
+    .regex(/^[6-9]\d{9}$/, "Enter 10-digit mobile number")
     .optional()
     .or(z.literal("")),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
@@ -77,7 +77,7 @@ export function EditMemberDialog({ open, onOpenChange, member }: EditMemberDialo
       form.reset({
         first_name: member.first_name || "",
         last_name: member.last_name || "",
-        phone: member.phone || "",
+        phone: (member.phone || "").replace(/^\+?91/, ""),
         email: member.email || "",
         gender: member.gender as any,
         date_of_birth: member.date_of_birth || "",
@@ -108,7 +108,7 @@ export function EditMemberDialog({ open, onOpenChange, member }: EditMemberDialo
       onOpenChange(false);
     } catch (error: any) {
       setErrorMessage(
-        error?.response?.data?.detail || "Failed to update member. Please try again."
+        error?.detail || error?.response?.data?.detail || "Failed to update member. Please try again."
       );
     }
   };
@@ -168,7 +168,17 @@ export function EditMemberDialog({ open, onOpenChange, member }: EditMemberDialo
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="9876543210" />
+                    <div className="flex items-center overflow-hidden rounded-md border border-input bg-background">
+                      <span className="px-3 py-2 text-sm text-muted-foreground flex-shrink-0 select-none border-r border-input">+91</span>
+                      <input
+                        type="tel"
+                        value={field.value?.replace(/^\+?91/, "") ?? ""}
+                        onChange={e => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                        placeholder="10-digit number"
+                        maxLength={10}
+                        className="flex-1 px-3 py-2 text-sm outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

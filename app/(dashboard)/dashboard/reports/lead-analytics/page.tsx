@@ -89,7 +89,7 @@ export default function LeadAnalyticsPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight gradient-text">Lead Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Lead Analytics</h1>
           <p className="text-muted-foreground mt-1">
             Conversion metrics and source breakdown
           </p>
@@ -326,7 +326,7 @@ export default function LeadAnalyticsPage() {
                           className="font-semibold"
                           style={{ color: LOST_REASON_COLORS[index % LOST_REASON_COLORS.length] }}
                         >
-                          {r.percentage.toFixed(1)}%
+                          {Number(r.percentage).toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -361,6 +361,8 @@ export default function LeadAnalyticsPage() {
                 className="rounded-xl overflow-hidden"
                 style={{ border: "1px solid hsl(var(--border)/0.5)" }}
               >
+                <div className="overflow-x-auto">
+                <div className="min-w-[400px]">
                 <div
                   className="grid grid-cols-5 px-4 py-2 text-[11px] font-bold text-muted-foreground uppercase"
                   style={{ borderBottom: "1px solid hsl(var(--border)/0.5)" }}
@@ -395,6 +397,8 @@ export default function LeadAnalyticsPage() {
                     </div>
                   );
                 })}
+                </div>
+                </div>
               </div>
             </div>
           )}

@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMemberDetail, useMemberStatusUpdate, useMembershipRenew, useMemberHealthRecords, useMemberHealthRecordsUpdate, useMemberDelete } from "@/lib/hooks/use-members";
+import { usePayments } from "@/lib/hooks/use-payments";
 import { EditMemberDialog } from "@/components/members/edit-member-dialog";
 import { MembershipHistoryDialog } from "@/components/members/membership-history-dialog";
 import { useMembershipPlans, useMembershipPlanDetail } from "@/lib/hooks/use-membership-plans";
@@ -30,6 +31,14 @@ import {
   X,
   Trash2,
   Pencil,
+  Receipt,
+  Banknote,
+  Smartphone,
+  Building2,
+  RotateCcw,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { StatusType } from "@/types/api";
 import {
@@ -86,16 +95,23 @@ export default function MemberDetailPage() {
   const { data: member, isLoading, error } = useMemberDetail(userId);
 
   // State declarations
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [targetStatus, setTargetStatus] = useState<StatusType | null>(null);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [renewCustomAmount, setRenewCustomAmount] = useState("");
   const [isEditingHealth, setIsEditingHealth] = useState(false);
 
   // Lazy-load health records only when editing
   const { data: healthRecords, isLoading: isHealthLoading } = useMemberHealthRecords(userId, isEditingHealth);
+
+  // Fetch all payments for this member (all memberships, past + current)
+  const { data: memberPaymentsData, isLoading: isPaymentsLoading } = usePayments(
+    member?.participant_id ? { participant_id: member.participant_id, page_size: 50 } : {}
+  );
 
   // Fetch the current member's plan (only if they have one)
   const { data: currentMemberPlan } = useMembershipPlanDetail(
@@ -166,14 +182,16 @@ export default function MemberDetailPage() {
 
   const handleRenewMembership = async () => {
     if (!selectedPlanId) return;
+    const amount = renewCustomAmount ? parseFloat(renewCustomAmount) : undefined;
 
     try {
       await renewMembership.mutateAsync({
         userId,
-        payload: { plan_id: selectedPlanId },
+        payload: { plan_id: selectedPlanId, amount_paid: amount },
       });
       setShowRenewDialog(false);
       setSelectedPlanId("");
+      setRenewCustomAmount("");
     } catch (err) {
       console.error("Failed to renew membership:", err);
     }
@@ -289,7 +307,7 @@ export default function MemberDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight gradient-text">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">
               {member.first_name} {member.last_name}
             </h1>
             <p className="text-muted-foreground mt-1">Gym Participant Details</p>
@@ -509,20 +527,26 @@ export default function MemberDetailPage() {
           </div>
         </div>
 
-        {/* Payments */}
-        <div className="rounded-xl overflow-hidden" style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+        {/* Payments — clickable to show full history */}
+        <button
+          onClick={() => setShowPaymentHistory(true)}
+          className="rounded-xl overflow-hidden text-left w-full transition-all hover:ring-1 hover:ring-purple-500/40"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+        >
           <div className="h-1 stat-bar-purple" />
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm text-muted-foreground">Total Payments</p>
-              <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.1)" }}>
-                <CreditCard className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+              <div className="flex items-center gap-1.5">
+                <div className="p-2 rounded-lg" style={{ background: "rgba(139, 92, 246, 0.1)" }}>
+                  <CreditCard className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+                </div>
               </div>
             </div>
             <p className="text-3xl font-bold" style={{ color: "#8b5cf6" }}>{member.total_payments}</p>
-            <p className="text-xs text-muted-foreground mt-1">Transactions recorded</p>
+            <p className="text-xs mt-1" style={{ color: "#8b5cf6" }}>View history →</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Health Records */}
@@ -858,6 +882,21 @@ export default function MemberDetailPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="pb-2">
+            <Label htmlFor="amount-input">Custom Amount (optional)</Label>
+            <div className="flex items-center mt-2 rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <span className="text-muted-foreground mr-1">₹</span>
+              <input
+                id="amount-input"
+                type="number"
+                min="0"
+                placeholder="Leave blank to use plan price"
+                value={renewCustomAmount}
+                onChange={e => setRenewCustomAmount(e.target.value)}
+                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
+              />
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -869,6 +908,106 @@ export default function MemberDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment History Modal */}
+      {showPaymentHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)" }}
+          onClick={() => setShowPaymentHistory(false)}
+        >
+          <div className="w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl flex flex-col"
+            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg" style={{ background: "rgba(139,92,246,0.1)" }}>
+                  <Receipt className="h-4 w-4" style={{ color: "#8b5cf6" }} />
+                </div>
+                <div>
+                  <h2 className="font-semibold">Payment History</h2>
+                  <p className="text-xs text-muted-foreground">{member.first_name} {member.last_name} — all transactions</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPaymentHistory(false)}
+                className="p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {isPaymentsLoading && (
+                <p className="text-sm text-muted-foreground text-center py-8">Loading payments…</p>
+              )}
+              {!isPaymentsLoading && (memberPaymentsData?.items ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No payments recorded yet.</p>
+              )}
+              {(memberPaymentsData?.items ?? []).map((pmt) => {
+                const MethodIcon =
+                  pmt.payment_method === "cash" ? Banknote :
+                  pmt.payment_method === "upi" ? Smartphone :
+                  pmt.payment_method === "card" ? CreditCard :
+                  pmt.payment_method === "bank_transfer" ? Building2 : Receipt;
+                const methodColor =
+                  pmt.payment_method === "cash" ? "#10b981" :
+                  pmt.payment_method === "upi" ? "#8b5cf6" :
+                  pmt.payment_method === "card" ? "#3b82f6" :
+                  pmt.payment_method === "bank_transfer" ? "#f59e0b" : "#6b7280";
+                const statusIcon =
+                  pmt.status === "completed" ? CheckCircle2 :
+                  pmt.status === "refunded" ? RotateCcw :
+                  pmt.status === "pending" ? Clock : AlertCircle;
+                const statusColor =
+                  pmt.status === "completed" ? "#10b981" :
+                  pmt.status === "refunded" ? "#f97316" :
+                  pmt.status === "pending" ? "#f59e0b" : "#ef4444";
+                const StatusIcon = statusIcon;
+                return (
+                  <div key={pmt.id} className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                    style={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2 rounded-lg flex-shrink-0" style={{ background: `${methodColor}18` }}>
+                        <MethodIcon className="h-4 w-4" style={{ color: methodColor }} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{pmt.receipt_number}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {new Date(pmt.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          {" · "}
+                          {pmt.payment_method.replace("_", " ").toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                        style={{ background: `${statusColor}18`, color: statusColor }}>
+                        <StatusIcon className="h-3 w-3" />
+                        <span className="capitalize">{pmt.status}</span>
+                      </div>
+                      <p className="text-sm font-bold" style={{ color: pmt.status === "refunded" ? "#f97316" : "#10b981" }}>
+                        {pmt.status === "refunded" ? "-" : ""}₹{Number(pmt.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal footer summary */}
+            {(memberPaymentsData?.stats) && (
+              <div className="px-6 py-3 border-t flex items-center justify-between text-sm"
+                style={{ borderColor: "hsl(var(--border))" }}>
+                <span className="text-muted-foreground">{memberPaymentsData.total} transaction{memberPaymentsData.total !== 1 ? "s" : ""}</span>
+                <span className="font-semibold" style={{ color: "#10b981" }}>
+                  Total paid: ₹{Number(memberPaymentsData.stats.total_revenue).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Edit Member Dialog */}
       <EditMemberDialog

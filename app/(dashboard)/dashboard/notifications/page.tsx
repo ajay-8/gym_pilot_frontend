@@ -31,6 +31,8 @@ function fmtRelative(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+const NOTIFICATIONS_FETCH_SIZE = 100; // load recent notifications in one request
+
 // ── Notification icon + color by type ────────────────────────────────────────
 
 const TYPE_CONFIG: Record<
@@ -127,27 +129,24 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [markingId, setMarkingId] = useState<string | null>(null);
 
-  // Single query — fetch all, filter client-side for the tab
-  const { data, isLoading } = useNotifications({ page_size: 100 });
+  // Pass unread_only to API — separate cache keys so switching tabs doesn't wait
+  const { data, isLoading } = useNotifications({
+    page_size: NOTIFICATIONS_FETCH_SIZE,
+    unread_only: unreadOnly || undefined,
+  });
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
 
-  const allItems = data?.items ?? [];
+  const displayedItems = data?.items ?? [];
   const unreadCount = data?.unread_count ?? 0;
   const total = data?.total ?? 0;
 
-  // Client-side filter for tab
-  const displayedItems = useMemo(
-    () => (unreadOnly ? allItems.filter((n) => !n.is_read) : allItems),
-    [allItems, unreadOnly]
-  );
-
-  // Counts by type from all items
+  // Counts by type from displayed items
   const byType = useMemo(() => {
     const map: Record<string, number> = {};
-    allItems.forEach((n) => { map[n.type] = (map[n.type] ?? 0) + 1; });
+    displayedItems.forEach((n) => { map[n.type] = (map[n.type] ?? 0) + 1; });
     return map;
-  }, [allItems]);
+  }, [displayedItems]);
 
   const expiringCount = (byType["membership_expiring"] ?? 0) + (byType["membership_expired"] ?? 0);
   const paymentCount  = (byType["payment_received"] ?? 0)    + (byType["payment_overdue"] ?? 0);
@@ -165,7 +164,7 @@ export default function NotificationsPage() {
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Notifications</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Notifications</h1>
           <p className="text-[11px] text-muted-foreground">
             {unreadCount > 0
               ? `${unreadCount} unread · ${total} total`

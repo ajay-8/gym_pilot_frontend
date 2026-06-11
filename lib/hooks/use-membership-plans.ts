@@ -31,6 +31,7 @@ export function useMembershipPlans(
     queryKey: membershipPlanKeys.list(gymContext?.gym_id, params),
     queryFn: () => membershipPlansApi.list(params),
     enabled: enabled && !!gymContext?.gym_id,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -44,6 +45,7 @@ export function useMembershipPlanDetail(planId: string, enabled = true) {
     queryKey: membershipPlanKeys.detail(gymContext?.gym_id, planId),
     queryFn: () => membershipPlansApi.getDetail(planId),
     enabled: enabled && !!gymContext?.gym_id && !!planId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 

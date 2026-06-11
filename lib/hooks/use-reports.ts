@@ -27,8 +27,8 @@ export function useDashboard() {
     queryKey: reportsKeys.dashboard(gymContext?.gym_id),
     queryFn: reportsApi.getDashboard,
     enabled: !!gymContext?.gym_id, // Only fetch if gym is selected
-    staleTime: 30 * 1000, // 30 seconds
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -52,7 +52,7 @@ export function useMembershipReport() {
     queryKey: reportsKeys.membership(gymContext?.gym_id),
     queryFn: reportsApi.getMembershipReport,
     enabled: !!gymContext?.gym_id,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

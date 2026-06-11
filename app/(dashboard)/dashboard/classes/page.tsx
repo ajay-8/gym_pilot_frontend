@@ -27,6 +27,7 @@ import {
   useClassSessionCancel,
 } from "@/lib/hooks/use-classes";
 import { useTrainers } from "@/lib/hooks/use-trainers";
+import { Button } from "@/components/ui/button";
 import type {
   ClassSessionResponse,
   GymClassResponse,
@@ -60,6 +61,10 @@ function toLocalDatetimeInput(isoOrEmpty?: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const SESSIONS_PAGE_SIZE = 15;
+const CLASSES_LIST_SIZE = 50;   // class definitions tab (show all in one view)
+const CLASSES_DROPDOWN_SIZE = 100; // for schedule-session class picker dropdown
+
 // ── Status config ──────────────────────────────────────────────────────────────
 
 const SESSION_STATUS: Record<ClassSessionStatus, { label: string; color: string; bg: string; icon: React.FC<{ className?: string; style?: React.CSSProperties }> }> = {
@@ -73,7 +78,7 @@ const SESSION_STATUS: Record<ClassSessionStatus, { label: string; color: string;
 function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white max-w-[calc(100vw-3rem)]"
       style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
       onClick={onDismiss}
     >
@@ -478,8 +483,10 @@ function SessionDetailPanel({ session, trainerName, onClose, onCancel, isCancell
                     {b.participant_id.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-foreground truncate">Participant</p>
-                    <p className="text-[10px] text-muted-foreground">{b.status}</p>
+                    <p className="text-[11px] font-semibold text-foreground truncate">
+                      {b.member_name ?? `Member …${b.participant_id.slice(-4)}`}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{b.status}</p>
                   </div>
                   {b.status === "waitlisted" && b.waitlist_position && (
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -620,7 +627,7 @@ interface ClassesTabProps {
 }
 
 function ClassesTab({ onCreateClass }: ClassesTabProps) {
-  const { data, isLoading } = useGymClasses({ page_size: 50 });
+  const { data, isLoading } = useGymClasses({ page_size: CLASSES_LIST_SIZE });
   const classes = data?.items ?? [];
   const deleteClass = useGymClassDelete();
   const updateClass = useGymClassUpdate();
@@ -723,11 +730,11 @@ export default function ClassesPage() {
   // Fetch data
   const sessionParams = {
     page,
-    page_size: 15,
+    page_size: SESSIONS_PAGE_SIZE,
     ...(statusFilter && { status: statusFilter }),
   };
   const { data: sessionsData, isLoading: loadingSessions } = useClassSessions(sessionParams);
-  const { data: classesData } = useGymClasses({ page_size: 100 });
+  const { data: classesData } = useGymClasses({ page_size: CLASSES_DROPDOWN_SIZE });
   const { data: trainersData } = useTrainers({ status: "active" });
 
   const sessions = sessionsData?.items ?? [];
@@ -767,9 +774,9 @@ export default function ClassesPage() {
     <div className="space-y-5">
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Classes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Classes</h1>
           <p className="text-[11px] text-muted-foreground">
             {classes.length} class types · {total} sessions
           </p>
@@ -879,17 +886,20 @@ export default function ClassesPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-1">
-              <p className="text-[11px] text-muted-foreground">Page {page} of {totalPages}</p>
-              <div className="flex gap-1">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted disabled:opacity-30">
-                  <ChevronLeft className="h-3.5 w-3.5 text-foreground" />
-                </button>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted disabled:opacity-30">
-                  <ChevronRight className="h-3.5 w-3.5 text-foreground" />
-                </button>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Showing {Math.min((page - 1) * SESSIONS_PAGE_SIZE + 1, total)}–{Math.min(page * SESSIONS_PAGE_SIZE, total)} of {total} session{total !== 1 ? "s" : ""}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground px-1">{page} / {totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           )}

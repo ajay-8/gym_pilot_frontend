@@ -9,7 +9,6 @@ import {
   Calendar,
   BarChart3,
   UserPlus,
-  Dumbbell,
   LogOut,
   ChevronRight,
   ChevronDown,
@@ -22,6 +21,8 @@ import {
   AlertTriangle,
   ScanLine as ScanIcon,
   Sparkles,
+  Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
+import { useDevTools } from "@/lib/providers/query-provider";
 import { GymSwitcherPill } from "@/components/gym-switcher-pill";
 import { useNotifications, useMarkAllRead } from "@/lib/hooks/use-notifications";
 import type { NotificationResponse, NotificationType, ParticipantRole } from "@/types/api";
@@ -54,10 +56,8 @@ const navigation: NavEntry[] = [
   {
     name: "Team & Members", icon: Users, roles: ["owner", "admin", "staff"],
     children: [
-      { name: "All",      href: "/dashboard/participants", icon: Users,    roles: ["owner", "admin", "staff"] },
-      { name: "Members",  href: "/dashboard/members",      icon: Users,    roles: ["owner", "admin", "staff"] },
-      { name: "Trainers", href: "/dashboard/trainers",     icon: Dumbbell, roles: ["owner", "admin"] },
-      { name: "Staff",    href: "/dashboard/staff",        icon: UserCog,  roles: ["owner", "admin"] },
+      { name: "Members", href: "/dashboard/members", icon: Users,   roles: ["owner", "admin", "staff"] },
+      { name: "Team",    href: "/dashboard/team",    icon: UserCog, roles: ["owner", "admin"] },
     ],
   },
   { name: "Check-ins",       href: "/dashboard/check-ins",  icon: ScanLine,  roles: ["owner", "admin", "staff"] },
@@ -68,6 +68,15 @@ const navigation: NavEntry[] = [
   { name: "Amenities",       href: "/dashboard/amenities",   icon: Sparkles,  roles: ["owner", "admin"] },
   { name: "Reports",         href: "/dashboard/reports",     icon: BarChart3, roles: ["owner", "admin"] },
 ];
+
+// Which nav item belongs to which section
+const NAV_SECTIONS: { label: string; names: string[] }[] = [
+  { label: "Overview",  names: ["Dashboard"] },
+  { label: "Manage",    names: ["Team & Members", "Check-ins", "Memberships", "Classes", "Payments"] },
+  { label: "Grow",      names: ["Leads", "Amenities", "Reports"] },
+];
+
+const NOTIFICATION_DROPDOWN_SIZE = 8; // latest N notifications shown in header dropdown
 
 // ── Notification type → icon + color ─────────────────────────────────────────
 
@@ -101,7 +110,7 @@ function fmtRelative(iso: string) {
 function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   // Fetch latest 8 notifications (mix of read + unread, newest first)
-  const { data } = useNotifications({ page_size: 8 });
+  const { data } = useNotifications({ page_size: NOTIFICATION_DROPDOWN_SIZE });
   const markAllRead = useMarkAllRead();
 
   const items = data?.items ?? [];
@@ -125,8 +134,8 @@ function NotificationDropdown() {
 
       <DropdownMenuContent
         align="end"
-        className="p-0 overflow-hidden"
-        style={{ width: "340px", maxHeight: "520px" }}
+        className="p-0 overflow-hidden w-[340px] max-w-[calc(100vw-1rem)]"
+        style={{ maxHeight: "520px" }}
       >
         {/* Header */}
         <div
@@ -241,9 +250,11 @@ export default function DashboardLayout({
   const router = useRouter();
   const { user, gymContext, isAuthenticated, hasHydrated } = useAuth();
   const logout = useLogout();
+  const { devToolsActive, toggleDevTools } = useDevTools();
 
   // All hooks must be declared before any early returns
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (hasHydrated && !isAuthenticated) router.push("/login");
@@ -253,8 +264,9 @@ export default function DashboardLayout({
     if (hasHydrated && isAuthenticated && !gymContext) router.push("/select-gym");
   }, [hasHydrated, isAuthenticated, gymContext, router]);
 
-  // Auto-expand group when navigating to a child page
+  // Auto-expand group when navigating to a child page; close mobile drawer
   useEffect(() => {
+    setMobileNavOpen(false);
     for (const item of navigation) {
       if (isGroup(item) && item.children.some((c) => pathname.startsWith(c.href))) {
         setOpenGroup(item.name);
@@ -339,68 +351,80 @@ export default function DashboardLayout({
         </div>
 
         {/* Nav links */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          <p className="px-3 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Menu
-          </p>
-          {filteredNavigation.map((item) => {
-            if (isGroup(item)) {
-              const isOpen = openGroup === item.name;
-              const hasActiveChild = item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
-              const visibleChildren = item.children.filter((c) =>
-                c.roles.some((r) => userRoles.includes(r as ParticipantRole))
-              );
-              return (
-                <div key={item.name}>
-                  <button
-                    onClick={() => setOpenGroup(isOpen ? null : item.name)}
-                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                      hasActiveChild ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4 flex-shrink-0" style={hasActiveChild ? { color: "#10b981" } : undefined} />
-                    <span className="flex-1 text-left">{item.name}</span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                      style={hasActiveChild ? { color: "#10b981" } : undefined}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="mt-0.5 ml-3 pl-3 space-y-0.5" style={{ borderLeft: "1px solid hsl(var(--border))" }}>
-                      {visibleChildren.map((child) => {
-                        const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
-                        return (
-                          <Link
-                            key={child.name}
-                            href={child.href}
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                              isChildActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+        <nav className="flex-1 overflow-y-auto py-3 px-3">
+          {NAV_SECTIONS.map((section) => {
+            const sectionItems = filteredNavigation.filter((item) =>
+              section.names.includes(item.name)
+            );
+            if (sectionItems.length === 0) return null;
+            return (
+              <div key={section.label} className="mb-4">
+                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  {section.label}
+                </p>
+                <div className="space-y-0.5">
+                  {sectionItems.map((item) => {
+                    if (isGroup(item)) {
+                      const isOpen = openGroup === item.name;
+                      const hasActiveChild = item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+                      const visibleChildren = item.children.filter((c) =>
+                        c.roles.some((r) => userRoles.includes(r as ParticipantRole))
+                      );
+                      return (
+                        <div key={item.name}>
+                          <button
+                            onClick={() => setOpenGroup(isOpen ? null : item.name)}
+                            className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                              hasActiveChild ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                             }`}
                           >
-                            <child.icon className="h-3.5 w-3.5 flex-shrink-0" style={isChildActive ? { color: "#10b981" } : undefined} />
-                            <span className="flex-1">{child.name}</span>
-                            {isChildActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
+                            <item.icon className="h-4 w-4 flex-shrink-0" style={hasActiveChild ? { color: "#10b981" } : undefined} />
+                            <span className="flex-1 text-left">{item.name}</span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                              style={hasActiveChild ? { color: "#10b981" } : undefined}
+                            />
+                          </button>
+                          {isOpen && (
+                            <div className="mt-0.5 ml-3 pl-3 space-y-0.5">
+                              {visibleChildren.map((child) => {
+                                const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                                return (
+                                  <Link
+                                    key={child.name}
+                                    href={child.href}
+                                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                                      isChildActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                    }`}
+                                  >
+                                    <child.icon className="h-3.5 w-3.5 flex-shrink-0" style={isChildActive ? { color: "#10b981" } : undefined} />
+                                    <span className="flex-1">{child.name}</span>
+                                    {isChildActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                          isActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" style={isActive ? { color: "#10b981" } : undefined} />
+                        <span className="flex-1">{item.name}</span>
+                        {isActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
+                      </Link>
+                    );
+                  })}
                 </div>
-              );
-            }
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
-                  isActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                }`}
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0" style={isActive ? { color: "#10b981" } : undefined} />
-                <span className="flex-1">{item.name}</span>
-                {isActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
-              </Link>
+              </div>
             );
           })}
         </nav>
@@ -433,21 +457,28 @@ export default function DashboardLayout({
       {/* ── Main ──────────────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header
-          className="flex h-16 flex-shrink-0 items-center justify-between px-6"
-          style={{ borderBottom: "1px solid hsl(var(--border))" }}
-        >
-          <div>
-            <h1 className="text-lg font-semibold text-foreground leading-tight">
-              {currentPage?.name || "Dashboard"}
-            </h1>
-            <p className="text-xs text-muted-foreground">{gymContext.gym_name}</p>
-          </div>
+        <header className="flex h-16 flex-shrink-0 items-center gap-2 px-4 md:px-6"
+          style={{ borderBottom: "1px solid hsl(var(--border)/0.5)" }}>
 
-          {/* Desktop: bell dropdown + avatar */}
-          <div className="hidden md:flex items-center gap-1.5">
+          {/* Mobile: hamburger */}
+          <button
+            className="md:hidden h-9 w-9 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <Menu className="h-5 w-5 text-muted-foreground" />
+          </button>
+
+          {/* Mobile: page title */}
+          <h1 className="text-lg font-semibold text-foreground leading-tight md:hidden flex-1 min-w-0 truncate">
+            {currentPage?.name || "Dashboard"}
+          </h1>
+
+          {/* Desktop: push controls to right */}
+          <div className="hidden md:flex flex-1" />
+
+          {/* Bell + Avatar — visible on all screen sizes */}
+          <div className="flex items-center gap-1.5">
             <NotificationDropdown />
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full p-0">
@@ -481,51 +512,166 @@ export default function DashboardLayout({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          {/* Mobile */}
-          <div className="md:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Users className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>{gymContext.gym_name}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {filteredNavigation.map((item) =>
-                  isGroup(item) ? (
-                    item.children
-                      .filter((c) => c.roles.some((r) => userRoles.includes(r as ParticipantRole)))
-                      .map((child) => (
-                        <DropdownMenuItem key={child.name} asChild>
-                          <Link href={child.href}>
-                            <child.icon className="mr-2 h-4 w-4" />
-                            {child.name}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))
-                  ) : (
-                    <DropdownMenuItem key={item.name} asChild>
-                      <Link href={item.href}>
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {item.name}
-                      </Link>
-                    </DropdownMenuItem>
-                  )
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
+
+      {/* ── Mobile slide-in nav drawer ─────────────────────────────────── */}
+      {mobileNavOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+          />
+
+          {/* Drawer panel */}
+          <div
+            className="fixed left-0 top-0 bottom-0 z-[301] w-72 flex flex-col md:hidden shadow-2xl"
+            style={{
+              background: "linear-gradient(180deg, hsl(220, 38%, 9%) 0%, hsl(220, 35%, 8%) 100%)",
+              borderRight: "1px solid hsl(var(--border))",
+            }}
+          >
+            {/* Logo + close */}
+            <div className="flex h-16 items-center gap-3 px-5 flex-shrink-0"
+              style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, #10b981 0%, #8b5cf6 100%)" }}>
+                <span className="text-white font-bold text-sm">GP</span>
+              </div>
+              <span className="text-base font-bold gradient-text flex-1">Gym Pilot</span>
+              <button onClick={() => setMobileNavOpen(false)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Gym pill */}
+            <div className="px-3 py-3 flex-shrink-0" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+              <GymSwitcherPill
+                gymContext={gymContext}
+                rgb="16,185,129"
+                roleLabel={userRoles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(", ")}
+              />
+            </div>
+
+            {/* Nav links */}
+            <nav className="flex-1 overflow-y-auto py-3 px-3">
+              {NAV_SECTIONS.map((section) => {
+                const sectionItems = filteredNavigation.filter((item) => section.names.includes(item.name));
+                if (sectionItems.length === 0) return null;
+                return (
+                  <div key={section.label} className="mb-4">
+                    <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                      {section.label}
+                    </p>
+                    <div className="space-y-0.5">
+                      {sectionItems.map((item) => {
+                        if (isGroup(item)) {
+                          const isOpen = openGroup === item.name;
+                          const hasActiveChild = item.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+                          const visibleChildren = item.children.filter((c) =>
+                            c.roles.some((r) => userRoles.includes(r as ParticipantRole))
+                          );
+                          return (
+                            <div key={item.name}>
+                              <button
+                                onClick={() => setOpenGroup(isOpen ? null : item.name)}
+                                className={`w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                                  hasActiveChild ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                }`}
+                              >
+                                <item.icon className="h-4 w-4 flex-shrink-0" style={hasActiveChild ? { color: "#10b981" } : undefined} />
+                                <span className="flex-1 text-left">{item.name}</span>
+                                <ChevronDown
+                                  className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                                  style={hasActiveChild ? { color: "#10b981" } : undefined}
+                                />
+                              </button>
+                              {isOpen && (
+                                <div className="mt-0.5 ml-3 pl-3 space-y-0.5">
+                                  {visibleChildren.map((child) => {
+                                    const isChildActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                                    return (
+                                      <Link
+                                        key={child.name}
+                                        href={child.href}
+                                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                                          isChildActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                                        }`}
+                                      >
+                                        <child.icon className="h-3.5 w-3.5 flex-shrink-0" style={isChildActive ? { color: "#10b981" } : undefined} />
+                                        <span className="flex-1">{child.name}</span>
+                                        {isChildActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        const isActive = pathname === item.href;
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                              isActive ? "nav-active" : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4 flex-shrink-0" style={isActive ? { color: "#10b981" } : undefined} />
+                            <span className="flex-1">{item.name}</span>
+                            {isActive && <ChevronRight className="h-3 w-3 opacity-70" style={{ color: "#10b981" }} />}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+
+            {/* Footer — portal switchers */}
+            {(isTrainer || isMember) && (
+              <div className="p-3 flex-shrink-0" style={{ borderTop: "1px solid hsl(var(--border))" }}>
+                {isTrainer && (
+                  <Link href="/trainer/dashboard"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-150 mb-1">
+                    <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                    <span>Switch to Trainer Portal</span>
+                  </Link>
+                )}
+                {isMember && (
+                  <Link href="/member/dashboard"
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all duration-150">
+                    <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                    <span>Switch to Member Portal</span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Dev-only: Query DevTools floating trigger — sits next to the Next.js N indicator */}
+      {process.env.NODE_ENV === "development" && (
+        <button
+          onClick={toggleDevTools}
+          title={devToolsActive ? "Close Query DevTools" : "Open Query DevTools"}
+          className="fixed bottom-3 left-14 z-[9999] h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white transition-opacity hover:opacity-80"
+          style={{
+            background: devToolsActive
+              ? "linear-gradient(135deg, #ef4444, #f97316)"
+              : "linear-gradient(135deg, #f97316, #eab308)",
+          }}
+        >
+          RQ
+        </button>
+      )}
     </div>
   );
 }

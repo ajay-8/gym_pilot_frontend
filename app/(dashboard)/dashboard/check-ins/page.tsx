@@ -5,8 +5,12 @@ import {
   Search, LogIn, LogOut, Clock, Users, CheckCircle, X, RefreshCw,
 } from "lucide-react";
 import { useCheckIns, useCheckInCreate, useCheckout } from "@/lib/hooks/use-check-ins";
+import { initials } from "@/lib/utils/formatting";
 import { useMembers } from "@/lib/hooks/use-members";
-import type { MemberListItem, CheckInResponse } from "@/types/api";
+import type { CheckInResponse, MemberListItem } from "@/types/api";
+
+const CHECK_IN_PAGE_SIZE = 100; // today's log: show all check-ins for the day
+const MEMBER_SEARCH_LIMIT = 8;  // max results shown in the search dropdown
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,10 +35,6 @@ function duration(from: string, to: string | null) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-function initials(first?: string, last?: string | null) {
-  return ((first?.[0] ?? "") + (last?.[0] ?? "")).toUpperCase() || "?";
-}
-
 // ── Member Search Dropdown ─────────────────────────────────────────────────────
 
 interface MemberSearchProps {
@@ -49,7 +49,7 @@ function MemberSearch({ onCheckIn, alreadyInGym, isPending }: MemberSearchProps)
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: membersData } = useMembers({ search: query.trim() || undefined, page_size: 8 });
+  const { data: membersData } = useMembers({ search: query.trim() || undefined, page_size: MEMBER_SEARCH_LIMIT });
   const results = membersData?.items ?? [];
 
   useEffect(() => {
@@ -147,12 +147,11 @@ function MemberSearch({ onCheckIn, alreadyInGym, isPending }: MemberSearchProps)
 
 interface CheckInRowProps {
   checkIn: CheckInResponse;
-  member?: MemberListItem;
   onCheckout: () => void;
   isCheckingOut: boolean;
 }
 
-function CheckInRow({ checkIn, member, onCheckout, isCheckingOut }: CheckInRowProps) {
+function CheckInRow({ checkIn, onCheckout, isCheckingOut }: CheckInRowProps) {
   const isInside = !checkIn.checked_out_at;
 
   return (
@@ -174,16 +173,16 @@ function CheckInRow({ checkIn, member, onCheckout, isCheckingOut }: CheckInRowPr
               : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
           }
         >
-          {member ? initials(member.first_name, member.last_name) : "?"}
+          {initials(checkIn.first_name, checkIn.last_name)}
         </div>
       </div>
 
       {/* Name + phone */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate leading-tight">
-          {member ? `${member.first_name} ${member.last_name ?? ""}` : "Unknown Member"}
+          {`${checkIn.first_name} ${checkIn.last_name}`.trim() || "Unknown Member"}
         </p>
-        <p className="text-[11px] text-muted-foreground">{member?.phone ?? "—"}</p>
+        <p className="text-[11px] text-muted-foreground">{checkIn.phone ?? "—"}</p>
       </div>
 
       {/* Time in */}
@@ -253,7 +252,7 @@ function Toast({ message, onDismiss }: { message: string; onDismiss: () => void 
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white max-w-[calc(100vw-3rem)]"
       style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
     >
       <CheckCircle className="h-4 w-4" />
@@ -272,24 +271,13 @@ export default function CheckInsPage() {
   const { data: todayData, isLoading, refetch, isFetching } = useCheckIns({
     date_from,
     date_to,
-    page_size: 100,
+    page_size: CHECK_IN_PAGE_SIZE,
   });
-
-  // Fetch all members for participant_id → name lookup (backend max is 100)
-  const { data: membersData } = useMembers({ page_size: 100 });
 
   const checkIn = useCheckInCreate();
   const checkout = useCheckout();
 
   const checkIns = todayData?.items ?? [];
-  const members = membersData?.items ?? [];
-
-  // Build lookup map: participant_id → MemberListItem
-  const memberMap = useMemo(() => {
-    const map = new Map<string, MemberListItem>();
-    members.forEach((m: MemberListItem) => map.set(m.participant_id, m));
-    return map;
-  }, [members]);
 
   // Who's currently inside (checked in, no checkout)
   const insideSet = useMemo(
@@ -320,11 +308,11 @@ export default function CheckInsPage() {
     }
   };
 
-  const handleCheckout = async (checkInId: string, member?: MemberListItem) => {
+  const handleCheckout = async (checkInId: string, firstName?: string) => {
     setCheckingOutId(checkInId);
     try {
       await checkout.mutateAsync({ checkInId });
-      setToast(`${member?.first_name ?? "Member"} checked out!`);
+      setToast(`${firstName ?? "Member"} checked out!`);
     } catch {
       setToast("Checkout failed. Please try again.");
     } finally {
@@ -342,7 +330,7 @@ export default function CheckInsPage() {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Check-ins</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Check-ins</h1>
           <p className="text-[11px] text-muted-foreground">{today}</p>
         </div>
         <button
@@ -454,8 +442,7 @@ export default function CheckInsPage() {
             <CheckInRow
               key={ci.id}
               checkIn={ci}
-              member={memberMap.get(ci.participant_id)}
-              onCheckout={() => handleCheckout(ci.id, memberMap.get(ci.participant_id))}
+              onCheckout={() => handleCheckout(ci.id, ci.first_name)}
               isCheckingOut={checkingOutId === ci.id}
             />
           ))

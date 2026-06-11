@@ -10,7 +10,8 @@ export const amenityKeys = {
 export function useAmenityCatalog() {
   return useQuery({
     queryKey: amenityKeys.catalog(),
-    queryFn: () => amenitiesApi.listAll({ page_size: 200 }),
+    queryFn: () => amenitiesApi.listAll({ page_size: 50 }),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -18,6 +19,7 @@ export function useGymAmenities() {
   return useQuery({
     queryKey: amenityKeys.gym(),
     queryFn: () => amenitiesApi.listGym(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

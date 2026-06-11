@@ -9,7 +9,6 @@ import {
   CheckCircle,
   Pencil,
   Trash2,
-  ChevronRight,
   BookOpen,
 } from "lucide-react";
 import {
@@ -316,7 +315,6 @@ function AmenityRow({
         </button>
       </div>
 
-      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-50 transition-opacity flex-shrink-0" />
     </div>
   );
 }
@@ -382,9 +380,9 @@ export default function AmenitiesPage() {
   return (
     <div className="space-y-5">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-base font-bold text-foreground leading-tight">Amenities</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight gradient-text">Amenities</h1>
           <p className="text-[11px] text-muted-foreground">
             {totalInGym} amenit{totalInGym !== 1 ? "ies" : "y"} at your gym
           </p>
@@ -546,7 +544,7 @@ export default function AmenitiesPage() {
       {/* ── Toast ───────────────────────────────────────────────────── */}
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-2.5 rounded-2xl shadow-2xl text-sm font-semibold text-white max-w-[calc(100vw-3rem)]"
           style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)" }}
         >
           <CheckCircle className="h-4 w-4" />
