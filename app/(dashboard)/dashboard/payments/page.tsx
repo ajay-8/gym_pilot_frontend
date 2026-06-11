@@ -20,6 +20,7 @@ import {
   Plus,
   Download,
   Filter,
+  Calendar,
 } from "lucide-react";
 import { usePayments, usePaymentCreate, usePaymentRefund } from "@/lib/hooks/use-payments";
 import { fmtDate, initials } from "@/lib/utils/formatting";
@@ -33,6 +34,7 @@ import type {
   PaymentMethod,
   PaymentStatus,
   PaymentListParams,
+  PaymentStats,
 } from "@/types/api";
 
 const PAGE_SIZE = 10;
@@ -617,6 +619,8 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [methodFilter, setMethodFilter] = useState<PaymentMethod | "">("");
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [debouncedMemberSearch, setDebouncedMemberSearch] = useState("");
   const [showRecordDialog, setShowRecordDialog] = useState(false);
@@ -640,6 +644,8 @@ export default function PaymentsPage() {
     ...(methodFilter && { payment_method: methodFilter }),
     ...(statusFilter && { status: statusFilter }),
     ...(filteredParticipantId && { participant_id: filteredParticipantId }),
+    ...(dateFrom && { date_from: dateFrom }),
+    ...(dateTo && { date_to: dateTo }),
   };
 
   const { data: paymentsData, isLoading } = usePayments(params);
@@ -648,16 +654,16 @@ export default function PaymentsPage() {
   const total = paymentsData?.total ?? 0;
   const totalPages = paymentsData?.total_pages ?? 1;
 
-  // Compute stat summary from current page (approximate - full dataset stats would need a backend endpoint)
-  const completedCount = payments.filter((p) => p.status === "completed").length;
-  const refundedCount = payments.filter((p) => p.status === "refunded").length;
-  const totalRevenue = payments
-    .filter((p) => p.status === "completed")
-    .reduce((acc, p) => acc + parseFloat(p.amount), 0);
+  const stats: PaymentStats | undefined = paymentsData?.stats;
+  const completedCount = stats?.completed_count ?? 0;
+  const refundedCount = stats?.refunded_count ?? 0;
+  const totalRevenue = parseFloat(stats?.total_revenue ?? "0");
 
-  // Reset to page 1 when filters change
   const handleMethodFilter = (v: PaymentMethod | "") => { setMethodFilter(v); setPage(1); };
   const handleStatusFilter = (v: PaymentStatus | "") => { setStatusFilter(v); setPage(1); };
+  const handleDateFrom = (v: string) => { setDateFrom(v); setPage(1); };
+  const handleDateTo = (v: string) => { setDateTo(v); setPage(1); };
+  const hasActiveFilters = !!(methodFilter || statusFilter || memberSearch || dateFrom || dateTo);
 
   return (
     <div className="space-y-6">
@@ -694,10 +700,10 @@ export default function PaymentsPage() {
       {/* ── Stat Cards ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total Transactions", value: total,                         icon: Receipt,     color: "#3b82f6", bg: "rgba(59,130,246,0.1)",   bar: "stat-bar-blue"   },
-          { label: "Completed (page)",   value: completedCount,                icon: CheckCircle2, color: "#10b981", bg: "rgba(16,185,129,0.1)",   bar: "stat-bar-green"  },
-          { label: "Revenue (page)",     value: fmtAmount(totalRevenue),       icon: CreditCard,  color: "#8b5cf6", bg: "rgba(139,92,246,0.1)",   bar: "stat-bar-purple" },
-          { label: "Refunded (page)",    value: refundedCount,                 icon: RotateCcw,   color: "#f97316", bg: "rgba(249,115,22,0.1)",   bar: "stat-bar-amber"  },
+          { label: "Total Transactions", value: total,                   icon: Receipt,      color: "#3b82f6", bg: "rgba(59,130,246,0.1)",  bar: "stat-bar-blue"   },
+          { label: "Completed",         value: completedCount,          icon: CheckCircle2, color: "#10b981", bg: "rgba(16,185,129,0.1)",  bar: "stat-bar-green"  },
+          { label: "Total Revenue",     value: fmtAmount(totalRevenue), icon: CreditCard,   color: "#8b5cf6", bg: "rgba(139,92,246,0.1)",  bar: "stat-bar-purple" },
+          { label: "Refunded",          value: refundedCount,           icon: RotateCcw,    color: "#f97316", bg: "rgba(249,115,22,0.1)",  bar: "stat-bar-amber"  },
         ].map((card) => {
           const Icon = card.icon;
           return (
@@ -734,8 +740,33 @@ export default function PaymentsPage() {
           options={STATUS_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
           onChange={v => handleStatusFilter(v as PaymentStatus | "")}
         />
-        {(methodFilter || statusFilter || memberSearch) && (
-          <button onClick={() => { setMethodFilter(""); setStatusFilter(""); setMemberSearch(""); setPage(1); }}
+        {/* Date range inputs */}
+        <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full flex-shrink-0"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <Calendar className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">From:</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => handleDateFrom(e.target.value)}
+            className="text-xs bg-transparent outline-none text-foreground"
+            style={{ colorScheme: "dark" }}
+          />
+        </label>
+        <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-full flex-shrink-0"
+          style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}>
+          <Calendar className="h-3 w-3 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">To:</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => handleDateTo(e.target.value)}
+            className="text-xs bg-transparent outline-none text-foreground"
+            style={{ colorScheme: "dark" }}
+          />
+        </label>
+        {hasActiveFilters && (
+          <button onClick={() => { setMethodFilter(""); setStatusFilter(""); setMemberSearch(""); setDateFrom(""); setDateTo(""); setPage(1); }}
             className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-80 flex-shrink-0"
             style={{ background: "rgba(239,68,68,0.10)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)" }}>
             <X className="h-3 w-3" /> Clear

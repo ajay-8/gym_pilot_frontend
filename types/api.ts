@@ -565,7 +565,6 @@ export interface PaymentMethodRevenue {
   payment_method: string;
   total_amount: number;
   transaction_count: number;
-  avg_transaction_value: number;
   percentage_of_total: number;
 }
 
@@ -573,14 +572,21 @@ export interface MonthlyRevenueAnalytics {
   month: string; // "YYYY-MM"
   total_revenue: number;
   transaction_count: number;
-  avg_transaction_value: number;
+}
+
+export interface FYMonthlyRevenue {
+  fy: string;         // "FY 2025-26"
+  month_abbr: string; // "Apr"
+  month_in_fy: number; // 1=Apr … 12=Mar
+  revenue: string;    // Decimal serialised as string
 }
 
 export interface RevenueAnalyticsResponse {
   total_revenue: number;
   total_transactions: number;
-  avg_transaction_value: number;
+  total_refunded: number;
   by_payment_method: PaymentMethodRevenue[];
+  fy_trend: FYMonthlyRevenue[];
   monthly_trend: MonthlyRevenueAnalytics[];
 }
 
@@ -909,12 +915,20 @@ export interface PaymentResponse {
   last_name: string;
 }
 
+export interface PaymentStats {
+  completed_count: number;
+  total_revenue: string;
+  refunded_count: number;
+  total_refunded: string;
+}
+
 export interface PaymentListResponse {
   items: PaymentResponse[];
   total: number;
   page: number;
   page_size: number;
   total_pages: number;
+  stats: PaymentStats;
 }
 
 export interface PaymentCreateRequest {
