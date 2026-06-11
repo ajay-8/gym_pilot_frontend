@@ -42,15 +42,24 @@ function RenewDialog({ userId, memberName, currentPlan, onClose, onSuccess }: Re
   const { data: plansData } = useMembershipPlans({}, true);
   const renewMembership = useMembershipRenew();
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
   const [error, setError] = useState("");
 
   const activePlans = (plansData?.items ?? []).filter(p => p.status === "active");
 
   const handleRenew = async () => {
     if (!selectedPlanId) { setError("Please select a plan."); return; }
+    const amount = customAmount ? parseFloat(customAmount) : undefined;
+    if (customAmount && (isNaN(amount!) || amount! < 0)) {
+      setError("Enter a valid amount.");
+      return;
+    }
     setError("");
     try {
-      await renewMembership.mutateAsync({ userId, payload: { plan_id: selectedPlanId } });
+      await renewMembership.mutateAsync({
+        userId,
+        payload: { plan_id: selectedPlanId, amount_paid: amount },
+      });
       onSuccess();
       onClose();
     } catch {
@@ -129,6 +138,25 @@ function RenewDialog({ userId, memberName, currentPlan, onClose, onSuccess }: Re
                 </button>
               );
             })}
+          </div>
+
+          {/* Optional custom amount */}
+          <div className="mt-3">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+              Custom Amount <span className="normal-case font-normal">(leave blank to use plan price)</span>
+            </p>
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl"
+              style={{ background: "hsl(var(--muted)/0.5)", border: "1px solid hsl(var(--border))" }}>
+              <span className="text-xs text-muted-foreground font-semibold">₹</span>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 1500"
+                value={customAmount}
+                onChange={e => setCustomAmount(e.target.value)}
+                className="flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+              />
+            </div>
           </div>
 
           {error && <p className="text-[11px] text-red-400 mt-3">{error}</p>}

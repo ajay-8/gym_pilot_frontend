@@ -92,6 +92,7 @@ export default function MemberDetailPage() {
   const [targetStatus, setTargetStatus] = useState<StatusType | null>(null);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [renewCustomAmount, setRenewCustomAmount] = useState("");
   const [isEditingHealth, setIsEditingHealth] = useState(false);
 
   // Lazy-load health records only when editing
@@ -166,14 +167,16 @@ export default function MemberDetailPage() {
 
   const handleRenewMembership = async () => {
     if (!selectedPlanId) return;
+    const amount = renewCustomAmount ? parseFloat(renewCustomAmount) : undefined;
 
     try {
       await renewMembership.mutateAsync({
         userId,
-        payload: { plan_id: selectedPlanId },
+        payload: { plan_id: selectedPlanId, amount_paid: amount },
       });
       setShowRenewDialog(false);
       setSelectedPlanId("");
+      setRenewCustomAmount("");
     } catch (err) {
       console.error("Failed to renew membership:", err);
     }
@@ -857,6 +860,21 @@ export default function MemberDetailPage() {
                   ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="pb-2">
+            <Label htmlFor="amount-input">Custom Amount (optional)</Label>
+            <div className="flex items-center mt-2 rounded-md border border-input bg-background px-3 py-2 text-sm">
+              <span className="text-muted-foreground mr-1">₹</span>
+              <input
+                id="amount-input"
+                type="number"
+                min="0"
+                placeholder="Leave blank to use plan price"
+                value={renewCustomAmount}
+                onChange={e => setRenewCustomAmount(e.target.value)}
+                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>

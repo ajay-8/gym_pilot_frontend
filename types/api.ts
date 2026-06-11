@@ -317,6 +317,7 @@ export interface MemberStatusUpdateRequest {
 export interface MembershipRenewRequest {
   plan_id: string;
   start_date?: string;
+  amount_paid?: number;
 }
 
 export interface MemberUpdateRequest {
