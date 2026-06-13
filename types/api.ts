@@ -976,6 +976,8 @@ export interface PaymentListParams {
 export interface APIError {
   detail: string;
   status?: number;
+  error_code?: string;
+  message?: string;
 }
 
 // Pagination Types

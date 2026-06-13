@@ -44,8 +44,7 @@ export function useGymOnboard() {
   return useMutation({
     mutationFn: gymsApi.onboard,
     onSuccess: async (data) => {
-      // After onboarding, automatically log in the user
-      // Store the owner info and redirect to login
+      // Email already verified during registration (pre-reg OTP) — go straight to login
       router.push(`/login?email=${encodeURIComponent(data.owner.email)}`);
     },
   });

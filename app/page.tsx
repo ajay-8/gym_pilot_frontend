@@ -229,7 +229,7 @@ export default function Home() {
               onMouseEnter={e => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.18)")}
               onMouseLeave={e => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)")}
             >Login</Link>
-            <PrimaryBtn href="/register">Book Demo <ArrowRight className="h-3.5 w-3.5 animate-lp-bounce-arrow" /></PrimaryBtn>
+            <PrimaryBtn href="/register">Sign Up Free <ArrowRight className="h-3.5 w-3.5 animate-lp-bounce-arrow" /></PrimaryBtn>
           </div>
 
           <button className="md:hidden p-1.5 rounded-lg transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}
@@ -314,7 +314,7 @@ export default function Home() {
               onBlur={e => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.15)")}
             />
             <PrimaryBtn href="/register" pulse>
-              Start Free Trial <ArrowRight className="h-4 w-4" />
+              Get Started Free <ArrowRight className="h-4 w-4" />
             </PrimaryBtn>
           </div>
           <div className="animate-lp-fade-up delay-400">
@@ -378,7 +378,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <PrimaryBtn href="/register">Start Your Free Trial <ArrowRight className="h-4 w-4" /></PrimaryBtn>
+            <PrimaryBtn href="/register">Get Started Free <ArrowRight className="h-4 w-4" /></PrimaryBtn>
           </RevealSection>
 
           <RevealSection delay={150}>
@@ -473,8 +473,7 @@ export default function Home() {
           </div>
 
           <RevealSection className="text-center" delay={300}>
-            <p className="text-sm mb-4" style={{ color: "rgba(255,255,255,0.35)" }}>Want to see a personalized demo?</p>
-            <PrimaryBtn href="/register">Book a Free Demo <ArrowRight className="h-4 w-4" /></PrimaryBtn>
+            <PrimaryBtn href="/register">Get Started Free <ArrowRight className="h-4 w-4" /></PrimaryBtn>
           </RevealSection>
         </div>
       </section>
@@ -560,7 +559,7 @@ export default function Home() {
           <RevealSection>
             <SectionTag>Transparent Pricing</SectionTag>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Choose Your Perfect Plan</h2>
-            <p className="mb-12 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No hidden fees. Cancel anytime. Start with a 14-day free trial.</p>
+            <p className="mb-12 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>No hidden fees. Cancel anytime. Free up to 100 members, no credit card required.</p>
           </RevealSection>
           <div className="grid gap-6 sm:grid-cols-2">
             {PRICING.map((plan, i) => (
@@ -603,7 +602,7 @@ export default function Home() {
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.85"; (e.currentTarget as HTMLElement).style.transform = "scale(1.01)"; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                     >
-                      Start Free Trial
+                      Get Started Free
                     </button>
                   </Link>
                 </div>
@@ -729,15 +728,14 @@ export default function Home() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Ready to Modernize Your Gym?</h2>
           <p className="mb-10 text-base" style={{ color: "rgba(255,255,255,0.58)" }}>Join hundreds of gym owners saving time and growing faster</p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <input type="email" placeholder="Enter your email for demo"
-              className="flex-1 min-w-0 px-4 py-3 rounded-xl text-sm outline-none transition-all duration-300"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff" }}
-              onFocus={e => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.5)")}
-              onBlur={e => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)")}
-            />
-            <PrimaryBtn href="/register" pulse>Book Your Demo <ArrowRight className="h-4 w-4" /></PrimaryBtn>
+            <PrimaryBtn href="/register" pulse>Create Free Account <ArrowRight className="h-4 w-4" /></PrimaryBtn>
+            <Link href="/login" className="px-6 py-3 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}
+              onMouseEnter={(e: any) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+              onMouseLeave={(e: any) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+            >Sign In</Link>
           </div>
-          <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.28)" }}>✓ Free consultation &nbsp;·&nbsp; No commitment &nbsp;·&nbsp; See results in 5 minutes</p>
+          <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.28)" }}>✓ Free up to 100 members &nbsp;·&nbsp; No credit card required &nbsp;·&nbsp; Setup in 5 minutes</p>
         </RevealSection>
       </section>
 

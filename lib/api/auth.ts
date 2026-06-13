@@ -55,4 +55,35 @@ export const authApi = {
   confirmPasswordReset: async (payload: PasswordResetConfirmSchema): Promise<void> => {
     await apiClient.post("/auth/password-reset/confirm", payload);
   },
+
+  // Verify email with OTP (post-creation flow)
+  verifyEmail: async (payload: { user_id: string; otp: string }): Promise<void> => {
+    await apiClient.post("/auth/verify-email", payload);
+  },
+
+  // Resend email verification OTP — returns user_id if the account exists and is unverified
+  resendVerificationOTP: async (email: string): Promise<{ user_id: string | null }> => {
+    const { data } = await apiClient.post("/auth/resend-verification-otp", { email });
+    return data;
+  },
+
+  // Pre-registration OTP: send before account exists
+  sendPreRegOTP: async (email: string): Promise<void> => {
+    await apiClient.post("/auth/send-pre-registration-otp", { email });
+  },
+
+  // Pre-registration OTP: verify
+  verifyPreRegOTP: async (email: string, otp: string): Promise<void> => {
+    await apiClient.post("/auth/verify-pre-registration-otp", { email, otp });
+  },
+
+  // Check if email and phone are available for registration
+  checkAvailability: async (payload: { email: string; phone?: string }): Promise<{
+    email_available: boolean;
+    phone_available: boolean;
+    can_proceed: boolean;
+  }> => {
+    const { data } = await apiClient.post("/auth/check-availability", payload);
+    return data;
+  },
 };
