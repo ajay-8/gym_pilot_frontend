@@ -90,9 +90,12 @@ apiClient.interceptors.response.use(
     }
 
     // Handle other errors
+    const data = error.response?.data as any;
     const apiError: APIError = {
-      detail: error.response?.data?.detail || error.message || "An unexpected error occurred",
+      detail: data?.detail || error.message || "An unexpected error occurred",
       status: error.response?.status,
+      error_code: data?.error_code,
+      message: data?.message,
     };
 
     return Promise.reject(apiError);

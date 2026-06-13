@@ -55,7 +55,9 @@ export default function LoginPage() {
     try {
       await login.mutateAsync(values);
     } catch (err: any) {
-      if (err?.status === 401) {
+      if (err?.error_code === "EMAIL_NOT_VERIFIED") {
+        router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+      } else if (err?.status === 401) {
         setError("Invalid email or password. Please try again.");
       } else if (typeof err?.detail === "string" && !err.detail.includes("status code")) {
         setError(err.detail);
