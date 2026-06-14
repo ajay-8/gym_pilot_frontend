@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useMyGyms } from "@/lib/hooks/use-gyms";
@@ -21,7 +22,7 @@ function Logo() {
   );
 }
 
-export default function SelectGymPage() {
+function SelectGymContent() {
   const { gymContext } = useAuth();
   const { data: gymsData, isLoading, isError } = useMyGyms({ page: 1, page_size: 50 });
   const setGymSession = useSetGymSession();
@@ -248,5 +249,20 @@ export default function SelectGymPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SelectGymPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#080b10" }}>
+          <div className="h-8 w-8 rounded-full border-2 animate-spin"
+            style={{ borderColor: "rgba(16,185,129,0.3)", borderTopColor: "#10b981" }} />
+        </div>
+      }
+    >
+      <SelectGymContent />
+    </Suspense>
   );
 }

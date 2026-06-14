@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMembers } from "@/lib/hooks/use-members";
 import { useMembershipPlans } from "@/lib/hooks/use-membership-plans";
@@ -90,7 +90,7 @@ function FilterChip({ icon: Icon, label, value, options, onChange }: {
   );
 }
 
-export default function MembersPage() {
+function MembersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
@@ -589,5 +589,13 @@ export default function MembersPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense>
+      <MembersContent />
+    </Suspense>
   );
 }
