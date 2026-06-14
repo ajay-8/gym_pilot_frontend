@@ -26,8 +26,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
+      - name: Wake up Render backend
+        run: |
+          curl -s https://gym-pilot-api.onrender.com/health || true
+          sleep 5
+
       - name: Wait for Vercel deployment
-        run: sleep 30
+        run: sleep 60
 
       - name: Run E2E tests
         run: npm run e2e
