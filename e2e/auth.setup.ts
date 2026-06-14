@@ -4,7 +4,7 @@ import path from "path";
 const authFile = path.join(__dirname, ".auth/user.json");
 
 setup("authenticate and select gym", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/login");
 
   await page.locator('input[type="email"]').fill(process.env.E2E_TEST_EMAIL!);
   await page

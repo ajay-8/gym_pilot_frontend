@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      E2E_BASE_URL: https://gym-pilot-frontend.vercel.app
+      E2E_BASE_URL: ${{ vars.E2E_BASE_URL }}
 
     steps:
       - uses: actions/checkout@v4

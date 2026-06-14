@@ -5,7 +5,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test("login with valid credentials redirects to gym selection", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/login");
 
   await page.locator('input[type="email"]').fill(process.env.E2E_TEST_EMAIL!);
   await page
@@ -17,14 +17,14 @@ test("login with valid credentials redirects to gym selection", async ({
 });
 
 test("login with wrong password shows error", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/login");
 
   await page.locator('input[type="email"]').fill(process.env.E2E_TEST_EMAIL!);
   await page.locator('input[type="password"]').fill("WrongPassword999!");
   await page.getByRole("button", { name: /sign in/i }).click();
 
   await expect(
-    page.getByText(/invalid credentials|incorrect|wrong/i)
+    page.getByText(/invalid email or password|invalid credentials|incorrect/i)
   ).toBeVisible({ timeout: 10000 });
 });
 
