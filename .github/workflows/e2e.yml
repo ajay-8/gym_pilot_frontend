@@ -58,8 +58,20 @@ jobs:
 
             core.setFailed('Timed out waiting for Vercel preview deployment (5 min)');
 
-      - name: Wake up Render backend
-        run: curl -s https://gym-pilot-api.onrender.com/health || true
+      - name: Wait for Render backend to be ready
+        run: |
+          echo "Polling Render backend health..."
+          for i in $(seq 1 18); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://gym-pilot-api.onrender.com/health)
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Backend did not become ready in 3 minutes"
+          exit 1
 
       - name: Run E2E tests
         run: npm run e2e
