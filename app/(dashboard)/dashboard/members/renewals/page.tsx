@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -343,7 +343,7 @@ function Section({ title, count, label, color, bgColor, icon, children, footer }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function RenewalsPage() {
+function RenewalsContent() {
   const searchParams = useSearchParams();
   // ?days=N passed from dashboard "View All" — show only expiring section
   const daysParam = searchParams.get("days");
@@ -601,5 +601,13 @@ export default function RenewalsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function RenewalsPage() {
+  return (
+    <Suspense>
+      <RenewalsContent />
+    </Suspense>
   );
 }
